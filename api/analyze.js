@@ -48,45 +48,45 @@ Return ONLY valid JSON, no markdown, no backticks:
   "overall_score": 3.2,
   "overall_score_rationale": "1 sentence explaining the score",
   "composite_score": 2.1,
-  "composite_score_rationale": "1-2 sentences on value minus risk composite â€” this is the primary ranking metric",
+  "composite_score_rationale": "1 sentence on value minus risk composite",
 
   "category1_risk_feasibility": {
     "risk_score": "Low" | "Medium" | "High" | "Critical",
     "risk_numeric": 3,
-    "risk_score_rationale": "2 sentences on harm potential if AI fails or hallucinates",
+    "risk_score_rationale": "1 sentence on harm potential if AI fails",
     "harm_types": ["Reputational", "Financial", "Physical", "Legal", "Operational"],
     "technical_feasibility": {
       "score": 3,
       "max": 5,
       "model_type_required": "Simple classification / NLP / Generative AI / Multi-modal / Agentic",
-      "complexity_rationale": "2 sentences on model complexity and integration",
-      "integration_assessment": "2 sentences on systems and difficulty"
+      "complexity_rationale": "1 sentence on model complexity",
+      "integration_assessment": "1 sentence on integration difficulty"
     },
     "compliance_warnings": [
-      {"flag": "Warning title", "category": "Data Privacy" | "Bias & Fairness" | "Human-in-the-Loop" | "Transparency" | "Security", "detail": "2 sentence explanation"}
+      {"flag": "Warning title", "category": "Data Privacy" | "Bias & Fairness" | "Human-in-the-Loop" | "Transparency" | "Security", "detail": "1 sentence explanation"}
     ],
     "regulatory_requirements": [
-      {"regulation": "Name", "jurisdiction": "Jurisdiction", "triggered_by": "What triggered this", "applicability": "Why it applies", "requirement": "What must be done", "priority": "Must Have" | "Should Have" | "Monitor"}
+      {"regulation": "Name", "jurisdiction": "Jurisdiction", "triggered_by": "What triggered this", "requirement": "What must be done â€” 1 sentence max", "priority": "Must Have" | "Should Have" | "Monitor"}
     ],
     "compliance_burden": "Low" | "Medium" | "High",
-    "compliance_burden_rationale": "2 sentences on compliance burden and investment"
+    "compliance_burden_rationale": "1 sentence on compliance burden"
   },
 
   "category2_value_roi": {
     "roi_score": 4,
     "roi_score_max": 5,
-    "business_value_assessment": "2 sentences on whether value is realistic and ROI justifies investment",
+    "business_value_assessment": "1 sentence on ROI realism",
     "time_savings": {
-      "assessment": "2 sentences on labor-hour reductions vs current approach",
+      "assessment": "1 sentence on time savings",
       "confidence": "High" | "Medium" | "Low"
     },
     "quality_error_reduction": {
-      "assessment": "2 sentences on projected error/rework reduction",
+      "assessment": "1 sentence on error reduction",
       "compliance_impact": "1 sentence on compliance impact"
     },
     "automation_vs_augmentation": {
       "end_state": "Full Automation (Straight-Through Processing)" | "Augmentation (AI-Assisted Human)" | "Hybrid",
-      "rationale": "2 sentences on end-state classification",
+      "rationale": "1 sentence on end-state",
       "human_oversight_required": true
     },
     "value_risks": ["Risk that could erode projected value"]
@@ -96,24 +96,24 @@ Return ONLY valid JSON, no markdown, no backticks:
     "data_readiness": {
       "score": 3,
       "max": 5,
-      "assessment": "2 sentences on data quality and fitness",
+      "assessment": "1 sentence on data quality",
       "recommendation": "Use as-is" | "Needs cleaning" | "Consider RAG" | "Consider fine-tuning" | "Significant data work required",
-      "rag_or_finetune_rationale": "2 sentences on RAG or fine-tuning recommendation"
+      "rag_or_finetune_rationale": "1 sentence on RAG/fine-tuning if needed"
     },
     "change_management": {
       "complexity": "Low" | "Medium" | "High",
-      "assessment": "2 sentences on training and workflow adjustment",
+      "assessment": "1 sentence on change management",
       "key_activities": ["Specific activity", "Specific activity"]
     },
     "monitoring_assessment": {
       "score": 2,
       "max": 5,
-      "assessment": "2 sentences on monitoring plan",
+      "assessment": "1 sentence on monitoring",
       "gaps": ["Monitoring gap"]
     },
-    "implementation_timeline_assessment": "2 sentences on timeline and budget realism",
+    "implementation_timeline_assessment": "1 sentence on timeline realism",
     "top_actions": [
-      {"action": "Specific action with owner and timeline", "priority": "Must Have" | "Should Have" | "Nice to Have"}
+      {"action": "Specific action", "priority": "Must Have" | "Should Have" | "Nice to Have"}
     ]
   }
 }
@@ -122,6 +122,7 @@ Scoring rules:
 - overall_score: weighted decimal 0-5 (technical_feasibility 15% + roi_score 20% + risk_numeric inverted where Critical=1,High=2,Medium=3,Low=4 â€” scaled to 5 â€” 20% + data_readiness 20% + monitoring 10% + compliance_burden inverted High=1,Medium=3,Low=5 â€” 15%)
 - composite_score: roi_score minus (risk_numeric * 0.6) â€” higher is better, range roughly -3 to +5 â€” this is the PRIMARY RANKING METRIC
 - risk_numeric: Critical=1, High=2, Medium=3, Low=4
+- regulatory_requirements: list maximum 5 most important regulations only â€” do not list every possible regulation
 - Return raw JSON only`;
 
     const userContent = `Company Profile:
@@ -139,7 +140,7 @@ ${useCase}`;
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 4096,
+        max_tokens: 5000,
         system: systemPrompt,
         messages: [{ role: 'user', content: userContent }]
       })
