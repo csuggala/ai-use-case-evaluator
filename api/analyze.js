@@ -43,10 +43,10 @@ Return ONLY valid JSON, no markdown, no backticks:
 {
   "use_case_name": "Short 3-5 word name for this use case",
   "recommendation": "Proceed" | "Proceed with Conditions" | "Do Not Proceed",
-  "recommendation_summary": "2-3 sentence summary with clear reasoning",
-  "thought_process": "3-4 sentences on evaluation logic and key decision factors",
+  "recommendation_summary": "2 sentence summary with clear reasoning",
+  "thought_process": "2-3 sentences on evaluation logic and key decision factors",
   "overall_score": 3.2,
-  "overall_score_rationale": "2 sentences explaining the score",
+  "overall_score_rationale": "1 sentence explaining the score",
   "composite_score": 2.1,
   "composite_score_rationale": "1-2 sentences on value minus risk composite â€” this is the primary ranking metric",
 
@@ -139,7 +139,7 @@ ${useCase}`;
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 3500,
+        max_tokens: 4096,
         system: systemPrompt,
         messages: [{ role: 'user', content: userContent }]
       })
