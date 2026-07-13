@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI Use Case Evaluator — Chandana Suggala</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0A1628; color: #E8EDF2; min-height: 100vh; padding: 2rem 1rem; }
@@ -650,101 +652,435 @@ function renderDetailInner(e) {
 function downloadReport() {
   var ranked = evaluations.slice().sort(function(a,b) { return (b.composite_score||0) - (a.composite_score||0); });
   var date = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+  var jsPDF = window.jspdf.jsPDF;
+  var doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-  var txt = 'AI USE CASE EVALUATOR — PORTFOLIO REPORT\n';
-  txt += 'Generated: ' + date + '\n';
-  txt += '='.repeat(60) + '\n\n';
-  txt += 'COMPANY PROFILE\n' + '-'.repeat(40) + '\n' + companyProfile + '\n\n';
-  txt += 'PORTFOLIO SUMMARY\n' + '-'.repeat(40) + '\n';
-  txt += 'Total use cases evaluated: ' + ranked.length + '\n';
-  txt += 'Proceed: ' + ranked.filter(function(e){return e.recommendation==='Proceed';}).length + '\n';
-  txt += 'Proceed with Conditions: ' + ranked.filter(function(e){return e.recommendation==='Proceed with Conditions';}).length + '\n';
-  txt += 'Do Not Proceed: ' + ranked.filter(function(e){return e.recommendation==='Do Not Proceed';}).length + '\n';
-  txt += 'Average readiness score: ' + (ranked.reduce(function(s,e){return s+(e.overall_score||0);},0)/ranked.length).toFixed(1) + ' / 5\n\n';
+  var W = 210; // A4 width
+  var margin = 14;
+  var contentW = W - margin * 2;
+  var y = margin;
 
+  // Color palette
+  var navy = [10, 22, 40];
+  var blue = [75, 158, 244];
+  var green = [34, 197, 94];
+  var amber = [245, 158, 11];
+  var red = [239, 68, 68];
+  var white = [255, 255, 255];
+  var lightGray = [245, 247, 250];
+  var midGray = [148, 163, 184];
+  var darkGray = [51, 65, 85];
+
+  function addPage() {
+    doc.addPage();
+    y = margin;
+    // Header bar on each page
+    doc.setFillColor.apply(doc, navy);
+    doc.rect(0, 0, W, 10, 'F');
+    doc.setTextColor.apply(doc, blue);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.text('AI USE CASE EVALUATOR', margin, 6.5);
+    doc.setTextColor.apply(doc, midGray);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Built by Chandana Suggala', W - margin, 6.5, { align: 'right' });
+    y = 18;
+  }
+
+  function checkY(needed) {
+    if (y + needed > 280) { addPage(); }
+  }
+
+  function sectionHeader(title, color) {
+    checkY(10);
+    color = color || navy;
+    doc.setFillColor.apply(doc, color);
+    doc.rect(margin, y, contentW, 7, 'F');
+    doc.setTextColor.apply(doc, white);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text(title, margin + 3, y + 4.8);
+    y += 10;
+  }
+
+  function label(txt, val, indent) {
+    if (!val) return;
+    indent = indent || 0;
+    checkY(12);
+    doc.setTextColor.apply(doc, midGray);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.text(txt.toUpperCase(), margin + indent, y);
+    doc.setTextColor.apply(doc, darkGray);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    var lines = doc.splitTextToSize(String(val), contentW - indent - 2);
+    lines.forEach(function(line) {
+      checkY(5);
+      doc.text(line, margin + indent, y + 4);
+      y += 4.5;
+    });
+    y += 2;
+  }
+
+  function recBadge(rec, x, bY) {
+    var color = rec === 'Proceed' ? green : rec === 'Proceed with Conditions' ? amber : red;
+    doc.setFillColor.apply(doc, color);
+    doc.roundedRect(x, bY - 4, 52, 6, 1.5, 1.5, 'F');
+    doc.setTextColor.apply(doc, white);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    var label2 = rec === 'Proceed with Conditions' ? 'With Conditions' : rec;
+    doc.text(label2, x + 26, bY, { align: 'center' });
+  }
+
+  function scoreBar(score, max, bX, bY, barW) {
+    barW = barW || 30;
+    var pct = (score / max);
+    var color = pct >= 0.7 ? green : pct >= 0.4 ? amber : red;
+    doc.setFillColor(220, 226, 234);
+    doc.roundedRect(bX, bY - 2.5, barW, 3, 1, 1, 'F');
+    doc.setFillColor.apply(doc, color);
+    doc.roundedRect(bX, bY - 2.5, barW * pct, 3, 1, 1, 'F');
+    doc.setTextColor.apply(doc, color);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text(score + '/' + max, bX + barW + 2, bY);
+  }
+
+  function chipText(txt, color, x, cY) {
+    doc.setTextColor.apply(doc, color);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text(txt, x, cY);
+  }
+
+  // ===== COVER PAGE =====
+  doc.setFillColor.apply(doc, navy);
+  doc.rect(0, 0, W, 297, 'F');
+
+  // Title block
+  doc.setFillColor.apply(doc, blue);
+  doc.rect(0, 60, W, 2, 'F');
+  doc.setTextColor.apply(doc, white);
+  doc.setFontSize(26);
+  doc.setFont('helvetica', 'bold');
+  doc.text('AI USE CASE', margin, 85);
+  doc.text('EVALUATOR', margin, 98);
+  doc.setFillColor.apply(doc, blue);
+  doc.rect(0, 103, W, 2, 'F');
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor.apply(doc, midGray);
+  doc.text('PORTFOLIO EVALUATION REPORT', margin, 113);
+  doc.setFontSize(10);
+  doc.text(date, margin, 122);
+  doc.setFontSize(9);
+  doc.text('Built by Chandana Suggala', margin, 131);
+
+  // Summary stats box
+  doc.setFillColor(16, 32, 54);
+  doc.roundedRect(margin, 150, contentW, 50, 3, 3, 'F');
+
+  var proceed = ranked.filter(function(e){return e.recommendation==='Proceed';}).length;
+  var conds = ranked.filter(function(e){return e.recommendation==='Proceed with Conditions';}).length;
+  var dnp = ranked.filter(function(e){return e.recommendation==='Do Not Proceed';}).length;
+  var avg = (ranked.reduce(function(s,e){return s+(e.overall_score||0);},0)/ranked.length).toFixed(1);
+
+  var stats = [
+    { label: 'EVALUATED', value: ranked.length, color: blue },
+    { label: 'PROCEED', value: proceed, color: green },
+    { label: 'WITH CONDITIONS', value: conds, color: amber },
+    { label: 'DO NOT PROCEED', value: dnp, color: red },
+    { label: 'AVG SCORE /5', value: avg, color: blue }
+  ];
+  var statW = contentW / stats.length;
+  stats.forEach(function(s, i) {
+    var sx = margin + i * statW + statW / 2;
+    doc.setTextColor.apply(doc, s.color);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text(String(s.value), sx, 175, { align: 'center' });
+    doc.setTextColor.apply(doc, midGray);
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(s.label, sx, 182, { align: 'center' });
+  });
+
+  // Company profile on cover
+  doc.setFillColor(16, 32, 54);
+  doc.roundedRect(margin, 210, contentW, 55, 3, 3, 'F');
+  doc.setTextColor.apply(doc, blue);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('COMPANY PROFILE', margin + 5, 220);
+  doc.setTextColor.apply(doc, midGray);
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'normal');
+  var profileLines = doc.splitTextToSize(companyProfile.replace(/\n/g, '  |  '), contentW - 10);
+  profileLines.slice(0, 6).forEach(function(line, i) {
+    doc.text(line, margin + 5, 227 + i * 5);
+  });
+
+  // ===== PAGE 2: PORTFOLIO SUMMARY TABLE =====
+  addPage();
+
+  doc.setTextColor.apply(doc, navy);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Portfolio Rankings', margin, y);
+  doc.setTextColor.apply(doc, midGray);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Ranked by composite score (value minus risk) — highest priority first', margin, y + 5);
+  y += 12;
+
+  // Summary table
+  var tableHead = [['Rank', 'Use Case', 'Recommendation', 'Overall', 'Composite', 'Risk', 'ROI', 'Compliance']];
+  var tableBody = ranked.map(function(e, i) {
+    var c1 = e.category1_risk_feasibility || {};
+    var c2 = e.category2_value_roi || {};
+    var rec = e.recommendation === 'Proceed with Conditions' ? 'With Conditions' : (e.recommendation || '—');
+    return [
+      '#' + (i + 1),
+      e.use_case_name || 'Use case ' + (i + 1),
+      rec,
+      (e.overall_score || '—') + '/5',
+      typeof e.composite_score === 'number' ? e.composite_score.toFixed(1) : '—',
+      c1.risk_score || '—',
+      (c2.roi_score || '—') + '/5',
+      c1.compliance_burden || '—'
+    ];
+  });
+
+  doc.autoTable({
+    startY: y,
+    head: tableHead,
+    body: tableBody,
+    theme: 'grid',
+    headStyles: { fillColor: navy, textColor: white, fontSize: 7.5, fontStyle: 'bold' },
+    bodyStyles: { fontSize: 7.5, textColor: darkGray },
+    alternateRowStyles: { fillColor: lightGray },
+    columnStyles: {
+      0: { cellWidth: 10, halign: 'center' },
+      1: { cellWidth: 45 },
+      2: { cellWidth: 28, halign: 'center' },
+      3: { cellWidth: 16, halign: 'center' },
+      4: { cellWidth: 18, halign: 'center' },
+      5: { cellWidth: 16, halign: 'center' },
+      6: { cellWidth: 14, halign: 'center' },
+      7: { cellWidth: 18, halign: 'center' }
+    },
+    didParseCell: function(data) {
+      if (data.section === 'body') {
+        var val = data.cell.raw;
+        if (val === 'Proceed') { data.cell.styles.textColor = green; data.cell.styles.fontStyle = 'bold'; }
+        else if (val === 'With Conditions') { data.cell.styles.textColor = amber; data.cell.styles.fontStyle = 'bold'; }
+        else if (val === 'Do Not Proceed') { data.cell.styles.textColor = red; data.cell.styles.fontStyle = 'bold'; }
+        else if (val === 'Low') { data.cell.styles.textColor = green; }
+        else if (val === 'Medium') { data.cell.styles.textColor = amber; }
+        else if (val === 'High' || val === 'Critical') { data.cell.styles.textColor = red; }
+      }
+    },
+    margin: { left: margin, right: margin }
+  });
+  y = doc.lastAutoTable.finalY + 10;
+
+  // ===== PAGES 3+: INDIVIDUAL USE CASE DETAIL =====
   ranked.forEach(function(e, i) {
+    addPage();
     var c1 = e.category1_risk_feasibility || {};
     var c2 = e.category2_value_roi || {};
     var c3 = e.category3_implementation || {};
+    var tf = c1.technical_feasibility || {};
+    var dr = c3.data_readiness || {};
+    var cm = c3.change_management || {};
+    var mon = c3.monitoring_assessment || {};
+    var ava = c2.automation_vs_augmentation || {};
+    var ts = c2.time_savings || {};
+    var qe = c2.quality_error_reduction || {};
     var inp = e._inputs || {};
 
-    txt += '='.repeat(60) + '\n';
-    txt += 'RANK #' + (i+1) + ' — ' + (e.use_case_name || 'Use case ' + (i+1)).toUpperCase() + '\n';
-    txt += '='.repeat(60) + '\n\n';
+    // Use case header
+    doc.setFillColor.apply(doc, navy);
+    doc.rect(0, y - 6, W, 18, 'F');
+    doc.setTextColor.apply(doc, midGray);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.text('RANK #' + (i + 1), margin, y);
+    doc.setTextColor.apply(doc, white);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text(e.use_case_name || 'Use case ' + (i + 1), margin, y + 6);
+    recBadge(e.recommendation, W - margin - 55, y + 5);
+    y += 18;
 
-    txt += 'RECOMMENDATION: ' + e.recommendation + '\n';
-    txt += 'Overall score: ' + (e.overall_score||'—') + ' / 5\n';
-    txt += 'Composite score (value minus risk): ' + (typeof e.composite_score==='number'?e.composite_score.toFixed(1):'—') + '\n';
-    txt += 'Risk: ' + (c1.risk_score||'—') + '\n';
-    txt += 'ROI score: ' + (c2.roi_score||'—') + ' / 5\n';
-    txt += 'Compliance burden: ' + (c1.compliance_burden||'—') + '\n\n';
+    // Score row
+    doc.setFillColor(16, 32, 54);
+    doc.rect(margin, y, contentW, 14, 'F');
+    var scoreItems = [
+      { label: 'OVERALL', value: (e.overall_score || '—') + '/5', color: e.overall_score >= 3.5 ? green : e.overall_score >= 2 ? amber : red },
+      { label: 'COMPOSITE', value: typeof e.composite_score === 'number' ? e.composite_score.toFixed(1) : '—', color: e.composite_score >= 2 ? green : e.composite_score >= 0 ? amber : red },
+      { label: 'RISK', value: c1.risk_score || '—', color: c1.risk_score === 'Low' ? green : c1.risk_score === 'Medium' ? amber : red },
+      { label: 'ROI', value: (c2.roi_score || '—') + '/5', color: c2.roi_score >= 3.5 ? green : c2.roi_score >= 2.5 ? amber : red },
+      { label: 'COMPLIANCE', value: c1.compliance_burden || '—', color: c1.compliance_burden === 'Low' ? green : c1.compliance_burden === 'Medium' ? amber : red }
+    ];
+    var siW = contentW / scoreItems.length;
+    scoreItems.forEach(function(si, idx) {
+      var sx = margin + idx * siW + siW / 2;
+      doc.setTextColor.apply(doc, midGray);
+      doc.setFontSize(6);
+      doc.setFont('helvetica', 'normal');
+      doc.text(si.label, sx, y + 4, { align: 'center' });
+      doc.setTextColor.apply(doc, si.color);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text(String(si.value), sx, y + 11, { align: 'center' });
+    });
+    y += 18;
 
-    txt += 'USER INPUTS\n' + '-'.repeat(40) + '\n';
-    if (inp.useCase) txt += 'What AI should do: ' + inp.useCase + '\n';
-    if (inp.problem) txt += 'Business problem: ' + inp.problem + '\n';
-    if (inp.value) txt += 'Proposed business value: ' + inp.value + '\n';
-    if (inp.data) txt += 'Data available: ' + inp.data + '\n';
-    if (inp.dataQuality) txt += 'Data quality: ' + inp.dataQuality + '\n';
-    if (inp.users) txt += 'User population: ' + inp.users + '\n';
-    if (inp.tech) txt += 'Technical infrastructure: ' + inp.tech + '\n';
-    if (inp.decision) txt += 'Decision type: ' + inp.decision + '\n';
-    if (inp.errorImpact) txt += 'Error impact: ' + inp.errorImpact + '\n';
-    if (inp.ethics) txt += 'Ethical concerns: ' + inp.ethics + '\n';
-    if (inp.timeline) txt += 'Timeline & budget: ' + inp.timeline + '\n';
-    if (inp.alternatives) txt += 'Current alternatives: ' + inp.alternatives + '\n';
-    if (inp.integration) txt += 'Integration: ' + inp.integration + '\n';
-    if (inp.humanLoop) txt += 'Human-in-the-loop: ' + inp.humanLoop + '\n';
-    if (inp.monitoring) txt += 'Monitoring plan: ' + inp.monitoring + '\n';
-    txt += '\n';
+    // Recommendation summary
+    sectionHeader('RECOMMENDATION & RATIONALE', navy);
+    label('Summary', e.recommendation_summary);
+    label('Thought process', e.thought_process);
 
-    txt += 'AI EVALUATION\n' + '-'.repeat(40) + '\n';
-    txt += 'Recommendation rationale:\n' + (e.recommendation_summary||'') + '\n\n';
-    txt += 'Thought process:\n' + (e.thought_process||'') + '\n\n';
-    txt += 'Overall score rationale:\n' + (e.overall_score_rationale||'') + '\n\n';
+    // User inputs
+    sectionHeader('YOUR INPUTS', [30, 60, 100]);
+    label('What AI should do', inp.useCase);
+    label('Business problem', inp.problem);
+    label('Proposed business value', inp.value);
+    if (inp.data) label('Data available', inp.data);
+    if (inp.dataQuality) label('Data quality', inp.dataQuality);
+    if (inp.decision) label('Decision type', inp.decision);
+    if (inp.errorImpact) label('Error impact', inp.errorImpact);
+    if (inp.timeline) label('Timeline & budget', inp.timeline);
+    if (inp.alternatives) label('Current alternatives', inp.alternatives);
 
-    txt += 'CATEGORY 1 — RISK & FEASIBILITY\n';
-    txt += 'Risk score: ' + (c1.risk_score||'') + '\n';
-    txt += c1.risk_score_rationale + '\n';
-    if ((c1.compliance_warnings||[]).length) {
-      txt += '\nCompliance warnings:\n';
-      (c1.compliance_warnings||[]).forEach(function(w) { txt += '  - ' + w.flag + ' (' + w.category + '): ' + w.detail + '\n'; });
+    // Category 1
+    sectionHeader('CATEGORY 1 — RISK & FEASIBILITY', [80, 20, 20]);
+    label('Risk assessment', c1.risk_score_rationale);
+    label('Model type required', tf.model_type_required);
+    label('Technical complexity', tf.complexity_rationale);
+
+    // Compliance warnings table
+    if ((c1.compliance_warnings || []).length) {
+      checkY(20);
+      doc.autoTable({
+        startY: y,
+        head: [['Compliance Warning', 'Category', 'Detail']],
+        body: (c1.compliance_warnings || []).map(function(w) { return [w.flag, w.category, w.detail]; }),
+        theme: 'grid',
+        headStyles: { fillColor: [120, 80, 10], textColor: white, fontSize: 7, fontStyle: 'bold' },
+        bodyStyles: { fontSize: 7, textColor: darkGray },
+        columnStyles: { 0: { cellWidth: 35 }, 1: { cellWidth: 28 }, 2: { cellWidth: contentW - 63 } },
+        margin: { left: margin, right: margin }
+      });
+      y = doc.lastAutoTable.finalY + 6;
     }
-    if ((c1.regulatory_requirements||[]).length) {
-      txt += '\nRegulatory requirements:\n';
-      (c1.regulatory_requirements||[]).forEach(function(r) { txt += '  - ' + r.regulation + ' [' + r.jurisdiction + '] — ' + r.requirement + ' (' + r.priority + ')\n'; });
-    }
-    txt += '\nCompliance burden: ' + (c1.compliance_burden||'') + '\n' + (c1.compliance_burden_rationale||'') + '\n\n';
 
-    txt += 'CATEGORY 2 — VALUE & ROI\n';
-    txt += 'ROI score: ' + (c2.roi_score||'') + ' / 5\n';
-    txt += 'Business value assessment: ' + (c2.business_value_assessment||'') + '\n';
-    if ((c2.time_savings||{}).assessment) txt += 'Time savings: ' + c2.time_savings.assessment + '\n';
-    if ((c2.quality_error_reduction||{}).assessment) txt += 'Quality & error reduction: ' + c2.quality_error_reduction.assessment + '\n';
-    if ((c2.automation_vs_augmentation||{}).end_state) txt += 'End state: ' + c2.automation_vs_augmentation.end_state + '\n';
-    if ((c2.value_risks||[]).length) { txt += 'Value risks:\n'; (c2.value_risks||[]).forEach(function(v){txt+='  - '+v+'\n';}); }
-    txt += '\n';
-
-    txt += 'CATEGORY 3 — IMPLEMENTATION\n';
-    if ((c3.data_readiness||{}).recommendation) txt += 'Data readiness: ' + c3.data_readiness.recommendation + ' — ' + (c3.data_readiness.assessment||'') + '\n';
-    if ((c3.change_management||{}).complexity) txt += 'Change management: ' + c3.change_management.complexity + ' — ' + (c3.change_management.assessment||'') + '\n';
-    if (c3.implementation_timeline_assessment) txt += 'Timeline assessment: ' + c3.implementation_timeline_assessment + '\n';
-    if ((c3.top_actions||[]).length) {
-      txt += 'Top actions:\n';
-      (c3.top_actions||[]).forEach(function(a,j){txt+='  '+(j+1)+'. ['+a.priority+'] '+a.action+'\n';});
+    // Regulatory requirements table
+    if ((c1.regulatory_requirements || []).length) {
+      checkY(20);
+      doc.setTextColor.apply(doc, midGray);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'bold');
+      doc.text('REGULATORY REQUIREMENTS', margin, y);
+      y += 4;
+      doc.autoTable({
+        startY: y,
+        head: [['Regulation', 'Jurisdiction', 'Triggered By', 'Requirement', 'Priority']],
+        body: (c1.regulatory_requirements || []).map(function(r) {
+          return [r.regulation || '', r.jurisdiction || '', r.triggered_by || '', r.requirement || '', r.priority || ''];
+        }),
+        theme: 'grid',
+        headStyles: { fillColor: navy, textColor: white, fontSize: 7, fontStyle: 'bold' },
+        bodyStyles: { fontSize: 6.5, textColor: darkGray },
+        alternateRowStyles: { fillColor: lightGray },
+        columnStyles: {
+          0: { cellWidth: 28 },
+          1: { cellWidth: 22 },
+          2: { cellWidth: 28 },
+          3: { cellWidth: contentW - 100 },
+          4: { cellWidth: 22, halign: 'center' }
+        },
+        didParseCell: function(data) {
+          if (data.section === 'body' && data.column.index === 4) {
+            var v = data.cell.raw;
+            if (v === 'Must Have') data.cell.styles.textColor = red;
+            else if (v === 'Should Have') data.cell.styles.textColor = amber;
+            else data.cell.styles.textColor = blue;
+            data.cell.styles.fontStyle = 'bold';
+          }
+        },
+        margin: { left: margin, right: margin }
+      });
+      y = doc.lastAutoTable.finalY + 8;
     }
-    txt += '\n';
+
+    // Category 2
+    sectionHeader('CATEGORY 2 — VALUE & ROI', [20, 80, 30]);
+    label('Business value assessment', c2.business_value_assessment);
+    label('Time savings', ts.assessment);
+    label('Quality & error reduction', qe.assessment);
+    if (ava.end_state) label('End state', ava.end_state + ' — ' + (ava.rationale || ''));
+    if ((c2.value_risks || []).length) label('Value risks', (c2.value_risks || []).join(' | '));
+
+    // Dimension scores table
+    checkY(30);
+    var dimData = [
+      ['Technical Feasibility', (tf.score || '—') + '/5', tf.complexity_rationale || ''],
+      ['Data Readiness', (dr.score || '—') + '/5', dr.assessment || ''],
+      ['Change Management', cm.complexity || '—', cm.assessment || ''],
+      ['Monitoring Readiness', (mon.score || '—') + '/5', mon.assessment || '']
+    ];
+    doc.autoTable({
+      startY: y,
+      head: [['Dimension', 'Score', 'Assessment']],
+      body: dimData,
+      theme: 'grid',
+      headStyles: { fillColor: navy, textColor: white, fontSize: 7, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 7, textColor: darkGray },
+      alternateRowStyles: { fillColor: lightGray },
+      columnStyles: { 0: { cellWidth: 38 }, 1: { cellWidth: 18, halign: 'center' }, 2: { cellWidth: contentW - 56 } },
+      margin: { left: margin, right: margin }
+    });
+    y = doc.lastAutoTable.finalY + 8;
+
+    // Category 3
+    sectionHeader('CATEGORY 3 — IMPLEMENTATION', [20, 40, 80]);
+    label('Data readiness', (dr.recommendation || '') + (dr.rag_or_finetune_rationale ? ' — ' + dr.rag_or_finetune_rationale : ''));
+    label('Timeline assessment', c3.implementation_timeline_assessment);
+    if ((cm.key_activities || []).length) label('Change management activities', (cm.key_activities || []).join(' | '));
+    if ((mon.gaps || []).length) label('Monitoring gaps', (mon.gaps || []).join(' | '));
+
+    // Top actions table
+    if ((c3.top_actions || []).length) {
+      checkY(20);
+      doc.autoTable({
+        startY: y,
+        head: [['#', 'Action', 'Priority']],
+        body: (c3.top_actions || []).map(function(a, j) { return [j + 1, a.action, a.priority]; }),
+        theme: 'grid',
+        headStyles: { fillColor: navy, textColor: white, fontSize: 7, fontStyle: 'bold' },
+        bodyStyles: { fontSize: 7, textColor: darkGray },
+        columnStyles: { 0: { cellWidth: 8, halign: 'center' }, 1: { cellWidth: contentW - 38 }, 2: { cellWidth: 30, halign: 'center' } },
+        didParseCell: function(data) {
+          if (data.section === 'body' && data.column.index === 2) {
+            var v = data.cell.raw;
+            if (v === 'Must Have') data.cell.styles.textColor = red;
+            else if (v === 'Should Have') data.cell.styles.textColor = amber;
+            else data.cell.styles.textColor = green;
+            data.cell.styles.fontStyle = 'bold';
+          }
+        },
+        margin: { left: margin, right: margin }
+      });
+      y = doc.lastAutoTable.finalY + 6;
+    }
   });
 
-  txt += '='.repeat(60) + '\n';
-  txt += 'Generated by AI Use Case Evaluator · Built by Chandana Suggala\n';
-
-  var blob = new Blob([txt], { type: 'text/plain' });
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = 'AI-Use-Case-Evaluation-' + new Date().toISOString().split('T')[0] + '.txt';
-  a.click();
-  URL.revokeObjectURL(url);
+  // Save
+  doc.save('AI-Use-Case-Evaluation-' + new Date().toISOString().split('T')[0] + '.pdf');
 }
 
 function renderResults() {
