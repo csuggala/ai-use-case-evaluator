@@ -1,0 +1,1543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Use Case Portfolio Evaluator — Chandana Suggala</title>
+<script src="/public/jspdf.min.js"></script>
+<script src="/public/jspdf.autotable.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0A1628; color: #E8EDF2; min-height: 100vh; padding: 2rem 1rem; }
+.container { max-width: 820px; margin: 0 auto; }
+.header { text-align: center; margin-bottom: 2rem; }
+.header h1 { font-size: 26px; font-weight: 600; color: #fff; margin-bottom: 6px; letter-spacing: -0.02em; }
+.header p { font-size: 14px; color: #6B8099; max-width: 560px; margin: 0 auto; line-height: 1.6; }
+.progress { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 2rem; }
+.step { display: flex; align-items: center; gap: 8px; }
+.step-num { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; border: 2px solid; transition: all 0.3s; }
+.step-num.active { background: #4B9EF4; border-color: #4B9EF4; color: #fff; }
+.step-num.done { background: #22C55E; border-color: #22C55E; color: #fff; }
+.step-num.inactive { background: transparent; border-color: #1E3347; color: #4A6070; }
+.step-label { font-size: 12px; font-weight: 500; }
+.step-label.active { color: #4B9EF4; }
+.step-label.done { color: #22C55E; }
+.step-label.inactive { color: #4A6070; }
+.step-line { width: 40px; height: 2px; background: #1E3347; margin: 0 4px; }
+.step-line.done { background: #22C55E; }
+/* Review page styles */
+.review-card { background: #112036; border: 1px solid #1E3347; border-radius: 12px; padding: 1.25rem; margin-bottom: 10px; }
+.review-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.review-card-title { font-size: 14px; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 8px; }
+.review-rank { width: 24px; height: 24px; border-radius: 50%; background: #1E3347; color: #9EB3C8; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.review-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.review-field { display: flex; flex-direction: column; gap: 2px; }
+.review-field-label { font-size: 10px; font-weight: 600; color: #6B8099; text-transform: uppercase; letter-spacing: 0.06em; }
+.review-field-val { font-size: 12px; color: #9EB3C8; line-height: 1.5; }
+.review-field.full { grid-column: 1 / -1; }
+.review-empty { text-align: center; padding: 2rem; color: #4A6070; font-size: 14px; }
+.page { display: none; }
+.page.active { display: block; }
+.card { background: #112036; border: 1px solid #1E3347; border-radius: 14px; padding: 1.5rem; margin-bottom: 1rem; }
+.card-title { font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+.card-sub { font-size: 13px; color: #6B8099; margin-bottom: 1.25rem; line-height: 1.5; }
+.section-label { font-size: 11px; font-weight: 600; color: #4B9EF4; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.full { grid-column: 1 / -1; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 12px; font-weight: 500; color: #9EB3C8; }
+.field input, .field select, .field textarea { padding: 9px 11px; font-size: 13px; font-family: inherit; color: #E8EDF2; background: #0A1628; border: 1px solid #1E3347; border-radius: 8px; width: 100%; transition: border-color 0.2s; }
+.field textarea { resize: vertical; line-height: 1.5; }
+.field textarea.lg { min-height: 90px; }
+.field textarea.md { min-height: 65px; }
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: #4B9EF4; }
+.field select option { background: #112036; }
+.hint { font-size: 11px; color: #3A5570; margin-top: 3px; line-height: 1.4; }
+.btn { padding: 11px 24px; font-size: 14px; font-weight: 500; cursor: pointer; border-radius: 10px; border: none; transition: all 0.2s; }
+.btn-primary { background: #4B9EF4; color: #fff; }
+.btn-primary:hover { background: #3B8EE4; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-secondary { background: #1E3347; color: #9EB3C8; }
+.btn-secondary:hover { background: #243D54; }
+.btn-success { background: #22C55E; color: #fff; }
+.btn-success:hover { background: #16A34A; }
+.btn-full { width: 100%; padding: 13px; font-size: 15px; }
+.btn-row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 1rem; }
+.uc-counter { background: #0A1628; border-radius: 10px; padding: 12px 16px; margin-bottom: 1rem; display: flex; align-items: flex-start; justify-content: space-between; }
+.uc-counter-label { font-size: 13px; color: #9EB3C8; margin-bottom: 6px; }
+.uc-counter-num { font-size: 22px; font-weight: 700; color: #4B9EF4; }
+.uc-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.uc-tag { font-size: 11px; background: #1E3347; color: #9EB3C8; padding: 3px 10px; border-radius: 8px; border: 1px solid #2A4060; }
+.uc-tag.done { background: rgba(34,197,94,0.1); color: #22C55E; border-color: rgba(34,197,94,0.3); }
+.uc-tag.current { background: rgba(245,158,11,0.1); color: #F59E0B; border-color: rgba(245,158,11,0.3); }
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+.modal-overlay.active { display: flex; }
+.modal { background: #112036; border: 1px solid #1E3347; border-radius: 16px; padding: 2rem; max-width: 440px; width: 90%; text-align: center; }
+.modal h3 { font-size: 18px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+.modal p { font-size: 14px; color: #9EB3C8; margin-bottom: 1.5rem; line-height: 1.6; }
+.modal-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.loading-overlay { display: none; position: fixed; inset: 0; background: rgba(10,22,40,0.92); z-index: 200; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
+.loading-overlay.active { display: flex; }
+.spinner { width: 40px; height: 40px; border: 3px solid #1E3347; border-top-color: #4B9EF4; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 15px; color: #E8EDF2; font-weight: 500; }
+.loading-sub { font-size: 12px; color: #6B8099; }
+.results-header { background: #112036; border: 1px solid #1E3347; border-radius: 14px; padding: 1.5rem; margin-bottom: 1.5rem; }
+.results-header h2 { font-size: 20px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+.results-header p { font-size: 13px; color: #6B8099; margin-bottom: 1rem; }
+.summary-stats { display: flex; gap: 10px; flex-wrap: wrap; }
+.stat-box { flex: 1; min-width: 90px; background: #0A1628; border-radius: 10px; padding: 12px; text-align: center; }
+.stat-num { font-size: 22px; font-weight: 700; display: block; }
+.stat-label { font-size: 11px; color: #6B8099; display: block; margin-top: 2px; }
+.table-wrap { overflow-x: auto; margin-bottom: 1.5rem; border-radius: 14px; border: 1px solid #1E3347; }
+table { width: 100%; border-collapse: collapse; background: #112036; font-size: 13px; min-width: 700px; }
+thead { background: #0A1628; }
+th { padding: 12px 14px; text-align: left; font-size: 11px; font-weight: 600; color: #6B8099; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
+th.c { text-align: center; }
+td { padding: 12px 14px; border-top: 1px solid #1E3347; vertical-align: middle; }
+td.c { text-align: center; }
+tr.uc-row:hover td { background: rgba(75,158,244,0.04); cursor: pointer; }
+.rank-circle { width: 28px; height: 28px; border-radius: 50%; background: #1E3347; color: #9EB3C8; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
+.rank-1 { background: rgba(245,184,11,0.2); color: #F5B80B; border: 1px solid rgba(245,184,11,0.4); }
+.rank-2 { background: rgba(156,163,175,0.2); color: #9CA3AF; border: 1px solid rgba(156,163,175,0.4); }
+.rank-3 { background: rgba(180,120,80,0.2); color: #B47850; border: 1px solid rgba(180,120,80,0.4); }
+.uc-name { font-weight: 500; color: #E8EDF2; }
+.uc-sub { font-size: 11px; color: #6B8099; margin-top: 2px; }
+.chip { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 8px; white-space: nowrap; display: inline-block; }
+.chip-green { background: rgba(34,197,94,0.15); color: #22C55E; border: 1px solid rgba(34,197,94,0.3); }
+.chip-amber { background: rgba(245,158,11,0.15); color: #F59E0B; border: 1px solid rgba(245,158,11,0.3); }
+.chip-red { background: rgba(239,68,68,0.15); color: #EF4444; border: 1px solid rgba(239,68,68,0.3); }
+.chip-blue { background: rgba(75,158,244,0.15); color: #4B9EF4; border: 1px solid rgba(75,158,244,0.3); }
+.score-green { color: #22C55E; font-weight: 700; }
+.score-amber { color: #F59E0B; font-weight: 700; }
+.score-red { color: #EF4444; font-weight: 700; }
+.expand-btn { font-size: 11px; color: #4B9EF4; background: rgba(75,158,244,0.1); border: 1px solid rgba(75,158,244,0.2); padding: 4px 10px; border-radius: 8px; cursor: pointer; }
+.detail-row td { padding: 0; border-top: none; }
+.detail-inner { background: #0A1628; margin: 0 0 8px 0; border-radius: 12px; padding: 1.25rem; border: 1px solid #1E3347; }
+.hidden { display: none; }
+.dl { font-size: 11px; font-weight: 600; color: #4B9EF4; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; margin-top: 12px; }
+.dt { font-size: 13px; color: #9EB3C8; line-height: 1.6; }
+.di { font-size: 12px; color: #9EB3C8; line-height: 1.5; }
+.inner-box { background: #112036; border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; border: 1px solid #1E3347; }
+.warn-box { background: #112036; border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; border-left: 3px solid #F59E0B; }
+.reg-box { background: #112036; border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; border: 1px solid #1E3347; }
+.score-mini { display: flex; align-items: center; gap: 8px; }
+.score-mini-val { font-size: 15px; font-weight: 700; min-width: 24px; }
+.bar-bg { background: #1E3347; border-radius: 3px; height: 5px; flex: 1; }
+.bar-fill { height: 5px; border-radius: 3px; }
+.dot-list { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
+.dot-item { display: flex; gap: 7px; align-items: flex-start; }
+.dot { flex-shrink: 0; width: 5px; height: 5px; border-radius: 50%; background: #4B9EF4; margin-top: 6px; }
+.act-item { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 7px; }
+.act-num { flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; background: rgba(75,158,244,0.15); color: #4B9EF4; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(75,158,244,0.3); }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 10px 0; }
+.mini-card { background: #112036; border-radius: 8px; padding: 10px; border: 1px solid #1E3347; }
+.mini-label { font-size: 10px; color: #6B8099; margin-bottom: 5px; }
+.error { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); color: #EF4444; border-radius: 10px; padding: 12px; font-size: 13px; margin-top: 1rem; }
+.divider { border: none; border-top: 1px solid #1E3347; margin: 2rem 0 1rem; }
+.footer { text-align: center; font-size: 12px; color: #2A4060; padding-bottom: 1rem; }
+/* Review page styles */
+.review-uc-card { background: #112036; border: 1px solid #1E3347; border-radius: 12px; padding: 1.25rem; margin-bottom: 10px; }
+.review-uc-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 10px; }
+.review-uc-num { width: 26px; height: 26px; border-radius: 50%; background: #4B9EF4; color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.review-uc-title { font-size: 14px; font-weight: 600; color: #E8EDF2; flex: 1; }
+.review-uc-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.review-uc-body { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.review-field { display: flex; flex-direction: column; gap: 2px; }
+.review-field.full { grid-column: 1 / -1; }
+.review-field-label { font-size: 10px; font-weight: 600; color: #6B8099; text-transform: uppercase; letter-spacing: 0.05em; }
+.review-field-val { font-size: 12px; color: #9EB3C8; line-height: 1.5; }
+.review-empty { text-align: center; padding: 2.5rem; color: #4A6070; font-size: 14px; }
+.delete-btn { font-size: 11px; color: #EF4444; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); padding: 4px 10px; border-radius: 8px; cursor: pointer; }
+.delete-btn:hover { background: rgba(239,68,68,0.2); }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+  <h1>AI Use Case Portfolio Evaluator</h1>
+  <p>Evaluate multiple AI use cases against your company profile and get a ranked portfolio with composite value-minus-risk scores.</p>
+</div>
+
+<div class="progress">
+  <div class="step"><div class="step-num active" id="sn1">1</div><span class="step-label active" id="sl1">Company Profile</span></div>
+  <div class="step-line" id="line1"></div>
+  <div class="step"><div class="step-num inactive" id="sn2">2</div><span class="step-label inactive" id="sl2">Use Cases</span></div>
+  <div class="step-line" id="line2"></div>
+  <div class="step"><div class="step-num inactive" id="sn3">3</div><span class="step-label inactive" id="sl3">Review</span></div>
+  <div class="step-line" id="line3"></div>
+  <div class="step"><div class="step-num inactive" id="sn4">4</div><span class="step-label inactive" id="sl4">Portfolio Results</span></div>
+</div>
+
+<!-- PAGE 1 -->
+<div class="page active" id="page1">
+  <div class="card">
+    <div class="card-title">Company profile</div>
+    <div class="card-sub">This information applies to all use cases. You only need to enter it once.</div>
+    <div class="section-label">Organization</div>
+    <div class="form-grid">
+      <div class="field">
+        <label>Industry / sector</label>
+        <select id="p1-industry">
+          <option value="">Select industry</option>
+          <option>Healthcare</option><option>Finance / Banking</option><option>Insurance</option>
+          <option>Legal</option><option>Education</option><option>Retail / E-commerce</option>
+          <option>Technology / SaaS</option><option>Manufacturing</option>
+          <option>Government / Public sector</option><option>HR / Recruitment</option>
+          <option>Real estate / Housing</option><option>Pharmaceutical / Life Sciences</option>
+          <option>Energy / Utilities</option><option>Telecommunications</option>
+          <option>Defense / Aerospace</option><option>Non-profit / NGO</option>
+          <option>Children's apps / EdTech (under 13)</option><option>Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Geography / user location</label>
+        <select id="p1-geo">
+          <option value="">Select geography</option>
+          <option>US only</option><option>EU only</option><option>US + EU</option>
+          <option>Canada</option><option>Global</option><option>Other / Not sure</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Company size</label>
+        <select id="p1-size">
+          <option value="">Select size</option>
+          <option>Startup (1-50)</option><option>Small (51-200)</option>
+          <option>Mid-market (201-1000)</option><option>Enterprise (1000+)</option>
+        </select>
+      </div>
+      <div class="field full">
+        <label>Organizational constraints, priorities, or known regulatory considerations</label>
+        <textarea class="md" id="p1-constraints" placeholder="e.g. Limited engineering capacity, existing Salesforce and Azure infrastructure, board mandate to reduce costs by 20%, recent FTC investigation, federal contractor obligations, known GDPR audit findings"></textarea>
+        <span class="hint">Budget constraints, tech stack, strategic priorities, risk appetite, specific regulations you know apply — anything that should influence all evaluations</span>
+      </div>
+    </div>
+  </div>
+  <button class="btn btn-primary btn-full" onclick="goToPage2()">Continue to use cases →</button>
+  <div style="text-align:center;margin-top:10px">
+    <button onclick="loadTestData()" style="font-size:12px;color:#6B8099;background:none;border:none;cursor:pointer;text-decoration:underline">⚡ Load test data (for demo/testing)</button>
+  </div>
+</div>
+
+<!-- PAGE 2 -->
+<div class="page" id="page2">
+  <div id="company-summary"></div>
+  <div class="uc-counter" id="uc-counter">
+    <div>
+      <div class="uc-counter-label">Use cases entered so far</div>
+      <div class="uc-tags" id="uc-tags"><span class="uc-tag current">→ Entering #1</span></div>
+    </div>
+    <div class="uc-counter-num" id="uc-count">0</div>
+  </div>
+  <div class="card">
+    <div class="card-title" id="uc-title">Use case #1</div>
+    <div class="card-sub">Your company profile from page 1 will be applied automatically to all use cases.</div>
+    <div class="section-label">What & why</div>
+    <div class="form-grid">
+      <div class="field full"><label>What do you want AI to do?</label><textarea class="lg" id="p2-uc" placeholder="e.g. Use AI to automatically triage and route incoming customer support tickets to the right team based on issue type, urgency, and customer tier"></textarea></div>
+      <div class="field full"><label>What business problem does this solve?</label><textarea class="md" id="p2-prob" placeholder="e.g. Support team spends 30% of time manually routing tickets, causing delays and a 15% misroute rate"></textarea></div>
+      <div class="field full"><label>Proposed business value</label><textarea class="lg" id="p2-val" placeholder="e.g. Save 15 hours/week in manual routing ($45K annually). Reduce resolution time by 20%. Improve CSAT from 3.8 to 4.2."></textarea><span class="hint">Be specific — time savings, cost reduction, error rates, revenue impact</span></div>
+    </div>
+    <div class="section-label" style="margin-top:1rem">Data & risk</div>
+    <div class="form-grid">
+      <div class="field full"><label>What data will the AI use?</label><textarea class="md" id="p2-data" placeholder="e.g. 3 years of historical support tickets, customer tier data from CRM, product catalog"></textarea></div>
+      <div class="field"><label>Data quality</label>
+        <select id="p2-dq">
+          <option value="">Select quality</option>
+          <option>High — clean, labeled, well-structured</option>
+          <option>Medium — some gaps or inconsistencies</option>
+          <option>Low — incomplete, unlabeled, or messy</option>
+          <option>Unknown — not yet assessed</option>
+        </select>
+      </div>
+      <div class="field"><label>Who makes the final decision?</label>
+        <select id="p2-dec">
+          <option value="">Select type</option>
+          <option>AI decides autonomously</option>
+          <option>AI recommends, human approves</option>
+          <option>AI assists, human decides</option>
+          <option>AI provides information only</option>
+        </select>
+      </div>
+      <div class="field"><label>What happens if AI gets it wrong?</label>
+        <select id="p2-err">
+          <option value="">Select impact</option>
+          <option>Minimal — easily corrected, low stakes</option>
+          <option>Moderate — causes rework or delay</option>
+          <option>Significant — affects customers or revenue</option>
+          <option>Severe — legal, safety, or reputational risk</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>User population for this use case</label>
+        <select id="p2-users">
+          <option value="">Select users</option>
+          <option>Internal employees only</option>
+          <option>Internal + external partners</option>
+          <option>Customers / public facing</option>
+          <option>Vulnerable populations involved</option>
+          <option>Users under 13 involved</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Technical infrastructure readiness for this use case</label>
+        <select id="p2-tech">
+          <option value="">Select readiness</option>
+          <option>Ready — existing systems can support AI</option>
+          <option>Partial — some work needed</option>
+          <option>Not ready — significant build required</option>
+          <option>Unknown</option>
+        </select>
+      </div>
+      <div class="field full"><label>Known risks, ethical concerns or sensitivities</label><textarea class="md" id="p2-eth" placeholder="e.g. Risk of bias against certain customer segments, privacy concerns, job displacement"></textarea></div>
+    </div>
+    <div class="section-label" style="margin-top:1rem">Implementation</div>
+    <div class="form-grid">
+      <div class="field full"><label>Timeline & budget</label><textarea class="md" id="p2-time" placeholder="e.g. 6 month timeline, $150K development, $2K/month API costs, $30K/year maintenance"></textarea></div>
+      <div class="field full"><label>Current alternatives — how is this solved today?</label><textarea class="md" id="p2-alt" placeholder="e.g. Manual routing by tier-1 team using a decision tree spreadsheet — 2-4 hours/day per agent"></textarea></div>
+      <div class="field full"><label>Integration complexity</label><textarea class="md" id="p2-int" placeholder="e.g. Ticket data in Zendesk, needs Salesforce CRM sync, AI output feeds routing rules via API"></textarea></div>
+      <div class="field full"><label>Human-in-the-loop & success metrics</label><textarea class="md" id="p2-hil" placeholder="e.g. Supervisors review 10% sample weekly. Success: accuracy >95%, manual time reduced 80%"></textarea></div>
+      <div class="field full"><label>Monitoring plan post-launch</label><textarea class="md" id="p2-mon" placeholder="e.g. Monthly accuracy reviews, automated alerts below 90%, quarterly drift assessment, retrain every 6 months"></textarea></div>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-secondary" onclick="goBack()">← Back</button>
+    <button class="btn btn-primary" id="submit-btn" onclick="submitUC()">+ Add use case</button>
+    <button class="btn btn-success" id="view-btn" onclick="goToReview()" disabled style="opacity:0.4;cursor:not-allowed">Review & run portfolio evaluation →</button>
+  </div>
+  <div id="p2-err-msg"></div>
+</div>
+
+<!-- PAGE 2.5 — REVIEW -->
+<div class="page" id="page25">
+  <div class="card">
+    <div class="card-title">Review use cases</div>
+    <div class="card-sub">Review all saved use cases before running the evaluation. You can edit, delete, or add more use cases. Click Run Portfolio Evaluation when ready.</div>
+  </div>
+  <div id="review-list"></div>
+  <div class="btn-row" style="margin-top:1rem;flex-wrap:wrap;gap:10px">
+    <button class="btn btn-secondary" onclick="goBackToUC()">← Add another use case</button>
+    <button class="btn btn-success" onclick="runEvaluation()">▶ Run portfolio evaluation</button>
+  </div>
+</div>
+
+<!-- PAGE 3 — RESULTS -->
+<div class="page" id="page3">
+  <div id="results"></div>
+  <div class="btn-row"><button class="btn btn-secondary" onclick="startOver()">← Start over</button><button class="btn btn-primary" onclick="addFromResults()">+ Add another use case</button></div>
+</div>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loading-text">Evaluating use cases...</div>
+  <div class="loading-sub" id="loading-sub"></div>
+  <div id="loading-progress" style="margin-top:12px;width:260px"></div>
+</div>
+
+<div class="divider"></div>
+<div class="footer">AI Use Case Portfolio Evaluator · Built by Chandana Suggala · AI-enabled program management</div>
+</div>
+
+<script>
+var companyProfile = '';
+var evaluations = [];
+var pendingInputs = [];
+var editingIndex = -1;
+
+function updateProgress(active) {
+  [1,2,3,4].forEach(function(n) {
+    var num = document.getElementById('sn' + n);
+    var label = document.getElementById('sl' + n);
+    if (!num) return;
+    if (n < active) {
+      num.className = 'step-num done'; num.textContent = '✓';
+      label.className = 'step-label done';
+    } else if (n === active) {
+      num.className = 'step-num active'; num.textContent = n;
+      label.className = 'step-label active';
+    } else {
+      num.className = 'step-num inactive'; num.textContent = n;
+      label.className = 'step-label inactive';
+    }
+  });
+  document.getElementById('line1').className = 'step-line' + (active > 1 ? ' done' : '');
+  document.getElementById('line2').className = 'step-line' + (active > 2 ? ' done' : '');
+  document.getElementById('line3').className = 'step-line' + (active > 3 ? ' done' : '');
+}
+
+function showPage(n) {
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  var el = document.getElementById('page' + n);
+  if (el) el.classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function goToPage2() {
+  var industry = document.getElementById('p1-industry').value;
+  var geo = document.getElementById('p1-geo').value;
+  if (!industry || !geo) { alert('Please select at least an industry and geography before continuing.'); return; }
+  companyProfile = 'Industry: ' + industry + '\nGeography: ' + geo +
+    '\nCompany size: ' + (document.getElementById('p1-size').value || 'Not specified') +
+    '\nConstraints/priorities/regulatory context: ' + (document.getElementById('p1-constraints').value || 'None specified');
+
+  // Show company profile summary on Page 2
+  document.getElementById('company-summary').innerHTML =
+    '<div style="background:#0A1628;border-radius:10px;padding:10px 14px;margin-bottom:1rem;border:1px solid #1E3347;font-size:12px;color:#9EB3C8;display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+    '<span style="font-size:11px;font-weight:600;color:#4B9EF4;text-transform:uppercase;letter-spacing:0.06em;flex-shrink:0">Company profile</span>' +
+    '<span>🏢 ' + industry + '</span>' +
+    '<span>🌍 ' + geo + '</span>' +
+    (document.getElementById('p1-size').value ? '<span>📊 ' + document.getElementById('p1-size').value + '</span>' : '') +
+    (document.getElementById('p1-constraints').value ? '<span style="color:#6B8099">· ' + document.getElementById('p1-constraints').value.substring(0,80) + (document.getElementById('p1-constraints').value.length > 80 ? '...' : '') + '</span>' : '') +
+    '<button onclick="showPage(1);updateProgress(1)" style="margin-left:auto;font-size:11px;color:#4B9EF4;background:none;border:none;cursor:pointer;text-decoration:underline">Edit</button>' +
+    '</div>';
+
+  showPage(2);
+  updateProgress(2);
+  updateCounter();
+}
+
+function goBack() { showPage(1); updateProgress(1); }
+
+function updateCounter() {
+  var count = pendingInputs.length;
+  document.getElementById('uc-count').textContent = count;
+  document.getElementById('uc-title').textContent = 'Use case #' + (count + 1);
+  var tags = pendingInputs.map(function(inp, i) {
+    return '<span class="uc-tag done">✓ ' + (inp.useCase ? inp.useCase.substring(0,30) + (inp.useCase.length > 30 ? '...' : '') : 'Use case ' + (i+1)) + '</span>';
+  }).join('') + '<span class="uc-tag current">→ Entering #' + (count + 1) + '</span>';
+  document.getElementById('uc-tags').innerHTML = tags;
+  var vb = document.getElementById('view-btn'); vb.disabled = count === 0; vb.style.opacity = count > 0 ? '1' : '0.4'; vb.style.cursor = count > 0 ? 'pointer' : 'not-allowed';
+  checkReviewBtn();
+}
+
+function setSelect(id, val) {
+  if (!val) return;
+  var sel = document.getElementById(id);
+  for (var i = 0; i < sel.options.length; i++) {
+    if (sel.options[i].value === val || sel.options[i].text === val) {
+      sel.selectedIndex = i; return;
+    }
+  }
+}
+
+function editUseCase(originalIndex) {
+  var inp = pendingInputs[originalIndex] || (evaluations[originalIndex] && evaluations[originalIndex]._inputs) || {};
+  if (!inp.useCase) return;
+  document.getElementById('p2-uc').value = inp.useCase || '';
+  document.getElementById('p2-prob').value = inp.problem || '';
+  document.getElementById('p2-val').value = inp.value || '';
+  document.getElementById('p2-data').value = inp.data || '';
+  document.getElementById('p2-eth').value = inp.ethics || '';
+  document.getElementById('p2-time').value = inp.timeline || '';
+  document.getElementById('p2-alt').value = inp.alternatives || '';
+  document.getElementById('p2-int').value = inp.integration || '';
+  document.getElementById('p2-hil').value = inp.humanLoop || '';
+  document.getElementById('p2-mon').value = inp.monitoring || '';
+  setSelect('p2-dq', inp.dataQuality);
+  setSelect('p2-users', inp.users);
+  setSelect('p2-tech', inp.tech);
+  setSelect('p2-dec', inp.decision);
+  setSelect('p2-err', inp.errorImpact);
+  editingIndex = originalIndex;
+  document.getElementById('uc-title').textContent = 'Editing: ' + (inp.useCase ? inp.useCase.substring(0,40) : 'Use case ' + (originalIndex + 1));
+  document.getElementById('submit-btn').textContent = '✓ Update use case';
+  document.getElementById('submit-btn').style.background = '#F59E0B';
+  document.getElementById('p2-err-msg').innerHTML = '<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#F59E0B;border-radius:8px;padding:10px 12px;font-size:13px;margin-top:8px">✏️ Editing — your changes will replace the previous evaluation.</div>';
+  showPage(2);
+  updateProgress(2);
+  window.scrollTo(0,0);
+}
+
+function clearForm() {
+  ['p2-uc','p2-prob','p2-val','p2-data','p2-eth','p2-time','p2-alt','p2-int','p2-hil','p2-mon'].forEach(function(id) {
+    document.getElementById(id).value = '';
+  });
+  ['p2-dq','p2-dec','p2-err','p2-users','p2-tech'].forEach(function(id) {
+    document.getElementById(id).selectedIndex = 0;
+  });
+  document.getElementById('p2-err-msg').innerHTML = '';
+  editingIndex = -1;
+  document.getElementById('submit-btn').textContent = '+ Add use case';
+  document.getElementById('submit-btn').style.background = '';
+  // Keep view-btn visible if there are already saved use cases
+  var vb2 = document.getElementById('view-btn'); vb2.disabled = pendingInputs.length === 0; vb2.style.opacity = pendingInputs.length > 0 ? '1' : '0.4'; vb2.style.cursor = pendingInputs.length > 0 ? 'pointer' : 'not-allowed';
+}
+
+async function submitUC() {
+  var uc = document.getElementById('p2-uc').value.trim();
+  if (!uc) { document.getElementById('p2-err-msg').innerHTML = '<div class="error">Please describe what you want AI to do before submitting.</div>'; return; }
+
+  // Collect inputs — no API call yet
+  var inputs = collectInputs();
+
+  if (editingIndex >= 0) {
+    pendingInputs[editingIndex] = inputs;
+    evaluations[editingIndex] = null;
+    editingIndex = -1;
+    clearForm();
+    updateCounter();
+    // Return to review page after editing
+    renderReview();
+    showPage('25');
+    updateProgress(3);
+    return;
+  } else {
+    pendingInputs.push(inputs);
+  }
+
+  clearForm();
+  updateCounter();
+
+  // Show Review button now that we have at least one use case
+  var vb3 = document.getElementById('view-btn'); vb3.disabled = false; vb3.style.opacity = '1'; vb3.style.cursor = 'pointer';
+  document.getElementById('p2-err-msg').innerHTML = '<div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22C55E;border-radius:8px;padding:10px 12px;font-size:13px;margin-top:8px">✓ Use case ' + pendingInputs.length + ' saved. Add another or click Review & run portfolio evaluation when ready.</div>';
+}
+
+function goToReview() {
+  // Fix 2 — auto-save current use case if something has been typed
+  var uc = document.getElementById('p2-uc').value.trim();
+  if (uc && editingIndex < 0) {
+    var inputs = collectInputs();
+    pendingInputs.push(inputs);
+    clearForm();
+    updateCounter();
+  } else if (uc && editingIndex >= 0) {
+    var inputs2 = collectInputs();
+    pendingInputs[editingIndex] = inputs2;
+    editingIndex = -1;
+    clearForm();
+    updateCounter();
+  }
+  if (pendingInputs.length === 0) {
+    document.getElementById('p2-err-msg').innerHTML = '<div class="error">Please add at least one use case before reviewing.</div>';
+    return;
+  }
+  renderReview();
+  showPage('25');
+  updateProgress(3);
+}
+
+function collectInputs() {
+  return {
+    useCase: document.getElementById('p2-uc').value,
+    problem: document.getElementById('p2-prob').value,
+    value: document.getElementById('p2-val').value,
+    data: document.getElementById('p2-data').value,
+    dataQuality: document.getElementById('p2-dq').value,
+    users: document.getElementById('p2-users').value,
+    tech: document.getElementById('p2-tech').value,
+    decision: document.getElementById('p2-dec').value,
+    errorImpact: document.getElementById('p2-err').value,
+    ethics: document.getElementById('p2-eth').value,
+    timeline: document.getElementById('p2-time').value,
+    alternatives: document.getElementById('p2-alt').value,
+    integration: document.getElementById('p2-int').value,
+    humanLoop: document.getElementById('p2-hil').value,
+    monitoring: document.getElementById('p2-mon').value
+  };
+}
+
+// Fix 1 — enable Review button when use case field has content
+function checkReviewBtn() {
+  var uc = document.getElementById('p2-uc').value.trim();
+  var hasInput = uc.length > 0 || pendingInputs.length > 0;
+  var vb = document.getElementById('view-btn');
+  vb.disabled = !hasInput;
+  vb.style.opacity = hasInput ? '1' : '0.4';
+  vb.style.cursor = hasInput ? 'pointer' : 'not-allowed';
+}
+
+function goBackToUC() {
+  showPage(2);
+  updateProgress(2);
+  document.getElementById('p2-err-msg').innerHTML = '';
+  window.scrollTo(0,0);
+}
+
+function renderReview() {
+  var list = document.getElementById('review-list');
+  if (pendingInputs.length === 0) {
+    list.innerHTML = '<div class="review-empty">No use cases saved yet. Go back and add at least one.</div>';
+    return;
+  }
+  list.innerHTML = pendingInputs.map(function(inp, i) {
+    return '<div class="review-uc-card">' +
+      '<div class="review-uc-header">' +
+        '<div class="review-uc-num">' + (i+1) + '</div>' +
+        '<div class="review-uc-title">' + (inp.useCase ? inp.useCase.substring(0,60) + (inp.useCase.length > 60 ? '...' : '') : 'Use case ' + (i+1)) + '</div>' +
+        '<div class="review-uc-actions">' +
+          '<button class="expand-btn" onclick="editFromReview(' + i + ')">✏️ Edit</button>' +
+          '<button class="delete-btn" onclick="deleteUseCase(' + i + ')">✕ Delete</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="review-uc-body">' +
+        (inp.problem ? '<div class="review-field full"><div class="review-field-label">Business problem</div><div class="review-field-val">' + inp.problem + '</div></div>' : '') +
+        (inp.value ? '<div class="review-field full"><div class="review-field-label">Proposed business value</div><div class="review-field-val">' + inp.value + '</div></div>' : '') +
+        (inp.dataQuality ? '<div class="review-field"><div class="review-field-label">Data quality</div><div class="review-field-val">' + inp.dataQuality + '</div></div>' : '') +
+        (inp.decision ? '<div class="review-field"><div class="review-field-label">Decision type</div><div class="review-field-val">' + inp.decision + '</div></div>' : '') +
+        (inp.errorImpact ? '<div class="review-field"><div class="review-field-label">Error impact</div><div class="review-field-val">' + inp.errorImpact + '</div></div>' : '') +
+        (inp.timeline ? '<div class="review-field"><div class="review-field-label">Timeline & budget</div><div class="review-field-val">' + inp.timeline + '</div></div>' : '') +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function deleteUseCase(index) {
+  if (!confirm('Delete use case ' + (index+1) + '?')) return;
+  pendingInputs.splice(index, 1);
+  if (pendingInputs.length === 0) {
+    goBackToUC();
+  } else {
+    renderReview();
+  }
+}
+
+function editFromReview(index) {
+  var inp = pendingInputs[index];
+  if (!inp) return;
+  document.getElementById('p2-uc').value = inp.useCase || '';
+  document.getElementById('p2-prob').value = inp.problem || '';
+  document.getElementById('p2-val').value = inp.value || '';
+  document.getElementById('p2-data').value = inp.data || '';
+  document.getElementById('p2-eth').value = inp.ethics || '';
+  document.getElementById('p2-time').value = inp.timeline || '';
+  document.getElementById('p2-alt').value = inp.alternatives || '';
+  document.getElementById('p2-int').value = inp.integration || '';
+  document.getElementById('p2-hil').value = inp.humanLoop || '';
+  document.getElementById('p2-mon').value = inp.monitoring || '';
+  setSelect('p2-dq', inp.dataQuality);
+  setSelect('p2-users', inp.users);
+  setSelect('p2-tech', inp.tech);
+  setSelect('p2-dec', inp.decision);
+  setSelect('p2-err', inp.errorImpact);
+  editingIndex = index;
+  document.getElementById('uc-title').textContent = 'Editing use case ' + (index+1);
+  document.getElementById('submit-btn').textContent = '✓ Update & back to review';
+  document.getElementById('submit-btn').style.background = '#F59E0B';
+  document.getElementById('p2-err-msg').innerHTML = '<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#F59E0B;border-radius:8px;padding:10px 12px;font-size:13px;margin-top:8px">✏️ Editing use case ' + (index+1) + ' — click Update when done.</div>';
+  showPage(2);
+  updateProgress(2);
+}
+
+async function runEvaluation() {
+  if (pendingInputs.length === 0) return;
+  document.getElementById('loading').classList.add('active');
+
+  async function evaluateOne(inputs, index) {
+    var ucDetails = 'Use case: ' + inputs.useCase +
+      '\nBusiness problem: ' + (inputs.problem || 'Not specified') +
+      '\nBusiness value: ' + (inputs.value || 'Not specified') +
+      '\nData: ' + (inputs.data || 'Not specified') +
+      '\nData quality: ' + (inputs.dataQuality || 'Not specified') +
+      '\nUser population: ' + (inputs.users || 'Not specified') +
+      '\nTechnical infrastructure: ' + (inputs.tech || 'Not specified') +
+      '\nDecision type: ' + (inputs.decision || 'Not specified') +
+      '\nError impact: ' + (inputs.errorImpact || 'Not specified') +
+      '\nEthical concerns: ' + (inputs.ethics || 'None noted') +
+      '\nTimeline & budget: ' + (inputs.timeline || 'Not specified') +
+      '\nAlternatives: ' + (inputs.alternatives || 'Not specified') +
+      '\nIntegration: ' + (inputs.integration || 'Not specified') +
+      '\nHuman-in-the-loop: ' + (inputs.humanLoop || 'Not specified') +
+      '\nMonitoring: ' + (inputs.monitoring || 'Not specified');
+
+    var resp = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ companyProfile: companyProfile, useCase: ucDetails })
+    });
+    var result = await resp.json();
+    if (result.error) throw new Error('Use case ' + (index+1) + ': ' + result.error);
+    result._inputs = inputs;
+    return result;
+  }
+
+  try {
+    var results = [];
+    for (var i = 0; i < pendingInputs.length; i++) {
+      document.getElementById('loading-text').textContent = 'Evaluating use case ' + (i+1) + ' of ' + pendingInputs.length + '...';
+      document.getElementById('loading-sub').textContent = (i > 0 ? i + ' of ' + pendingInputs.length + ' done. ' : '') + 'This takes ~15-20 seconds per use case';
+      var result = await evaluateOne(pendingInputs[i], i);
+      results.push(result);
+    }
+    evaluations = results;
+    document.getElementById('loading').classList.remove('active');
+    renderResults();
+    showPage(3);
+    updateProgress(4);
+  } catch(err) {
+    document.getElementById('loading').classList.remove('active');
+    alert('Something went wrong: ' + err.message + '. Please try again.');
+  }
+}
+
+function addFromResults() {
+  clearForm();
+  updateCounter();
+  showPage(2);
+  updateProgress(2);
+}
+
+function loadTestData() {
+  // Pre-fill company profile
+  document.getElementById('p1-industry').value = 'Technology / SaaS';
+  document.getElementById('p1-geo').value = 'US only';
+  document.getElementById('p1-size').value = 'Mid-market (201-1000)';
+  document.getElementById('p1-constraints').value = 'Existing Salesforce, Jira, and Azure infrastructure. Engineering team of 12. Board mandate to reduce operational costs by 20% and improve SRE efficiency.';
+
+  // Build company profile string
+  companyProfile = 'Industry: Technology / SaaS\nGeography: US only\nCompany size: Mid-market (201-1000)\nConstraints/priorities/regulatory context: Existing Salesforce, Jira, and Azure infrastructure. Engineering team of 12. Board mandate to reduce operational costs by 20% and improve SRE efficiency.';
+
+  // Pre-load 2 use cases
+  pendingInputs = [
+    {
+      useCase: 'Use AI to automatically analyze IT support tickets, identify recurring infrastructure incidents, predict which systems are likely to fail in the next 72 hours, and recommend preventive actions to the SRE team before outages occur',
+      problem: 'The SRE team spends 60% of their time reactively firefighting incidents. The company averages 4 major outages per month, each costing $85K in lost revenue and SLA penalties.',
+      value: 'Reduce major outages from 4 to 1 per month saving $255K/month. Free up 60% of SRE time for proactive engineering. Reduce MTTD from 45 minutes to under 10 minutes. ROI expected within 4 months.',
+      data: '3 years of Jira incident tickets, Datadog monitoring metrics (CPU, memory, latency, error rates), deployment logs from GitHub and Jenkins, on-call escalation history',
+      dataQuality: 'High — clean, labeled, well-structured',
+      users: 'Internal employees only',
+      tech: 'Ready — existing systems can support AI',
+      decision: 'AI recommends, human approves',
+      errorImpact: 'Moderate — causes rework or delay',
+      ethics: 'Risk of alert fatigue if false positive rate is too high. Potential bias toward flagging newer systems with less historical data.',
+      timeline: '4 month timeline. Budget: $80K development, $1.5K/month API costs, $20K/year maintenance.',
+      alternatives: 'Manual monitoring dashboards in Datadog with threshold-based alerts. SREs manually review ticket trends in weekly war room meetings. No predictive capability.',
+      integration: 'Data in Jira, Datadog, and GitHub — all have well-documented APIs. AI predictions surface as alerts in Slack and PagerDuty.',
+      humanLoop: 'SRE reviews every AI prediction before taking preventive action. Success: outage reduction by 75%, MTTD under 10 minutes, false positive rate below 20%.',
+      monitoring: 'Weekly review of prediction accuracy vs actual incidents. Automated alert if false positive rate exceeds 25%. Monthly retraining as infrastructure evolves.'
+    },
+    {
+      useCase: 'Use AI to automatically review and extract key clauses, obligations, renewal dates, and risk flags from vendor contracts, then populate a centralized contract management dashboard',
+      problem: 'Legal and procurement teams manually review 200+ vendor contracts per month, each taking 2-3 hours. Critical renewal dates are missed, non-standard clauses go undetected, and there is no centralized visibility into contractual obligations.',
+      value: 'Save 400+ hours/month in manual contract review ($120K annually). Reduce missed renewal penalties by 90% — currently costing $80K/year. Centralized dashboard gives CFO real-time view of all vendor obligations.',
+      data: 'PDF and Word contract documents from 500+ active vendors, historical contracts going back 5 years, internal clause library with approved vs non-standard language definitions',
+      dataQuality: 'Medium — some gaps or inconsistencies',
+      users: 'Internal employees only',
+      tech: 'Partial — some work needed',
+      decision: 'AI recommends, human approves',
+      errorImpact: 'Significant — affects customers or revenue',
+      ethics: 'Risk of AI missing a critical clause that results in a bad contract being signed. Confidentiality of vendor terms must be protected.',
+      timeline: '9 month timeline. Budget: $200K development, $3K/month API/token costs for document processing, $40K/year maintenance.',
+      alternatives: 'Manual review by 3 paralegals and 2 procurement analysts using a shared Excel tracker. High error rate on renewal tracking, no standardized clause flagging process.',
+      integration: 'Contracts stored in SharePoint and email. AI output needs to feed into existing contract management system (Ironclad). Requires SharePoint API integration and PDF parsing pipeline.',
+      humanLoop: 'Legal team reviews all AI-flagged risk clauses before any contract is signed. Success: 95% clause extraction accuracy, 100% renewal date capture, zero missed renewals within 6 months.',
+      monitoring: 'Monthly accuracy audits comparing AI extraction against manual spot checks on 10% of contracts. Quarterly review of clause library. Model retraining every 6 months.'
+    },
+    {
+      useCase: 'Use AI to automatically generate tailored status update communications for different stakeholder audiences — executive summary for the CTO, detailed technical update for the engineering team, and client-facing update for account managers — from a single raw project status input',
+      problem: 'Program managers spend 3-4 hours per week manually writing the same project update in different formats for different audiences. Inconsistent messaging causes misalignment between executive expectations and engineering reality, and delays stakeholder communication by 1-2 days.',
+      value: 'Save 3-4 hours per PM per week across 8 PMs ($85K annually in labor). Reduce stakeholder communication lag from 2 days to same-day. Improve message consistency and reduce executive escalations by an estimated 40%.',
+      data: 'Historical project status updates, stakeholder communication templates, project metadata from Jira, past escalation logs to identify communication gaps',
+      dataQuality: 'Medium — some gaps or inconsistencies',
+      users: 'Internal employees only',
+      tech: 'Ready — existing systems can support AI',
+      decision: 'AI recommends, human approves',
+      errorImpact: 'Moderate — causes rework or delay',
+      ethics: 'Risk of AI softening or misrepresenting project risks in executive summaries. PMs must review all AI-generated communications before sending to avoid inaccurate status reporting.',
+      timeline: '3 month timeline. Budget: $40K development, $800/month API costs, $12K/year maintenance. Time-to-value expected within 6 weeks of launch.',
+      alternatives: 'Manual writing by each PM using a loose template in Confluence. No standardization, high variation in quality and detail level, significant time investment each week.',
+      integration: 'Integrates with Jira for project data and Microsoft Teams for delivery. PMs paste raw notes into a simple interface and receive three formatted outputs ready to copy-paste or send directly.',
+      humanLoop: 'PM reviews and approves all three versions before sending. Success: 90% of communications sent same-day, PM satisfaction score above 4/5, zero escalations due to miscommunication within 3 months.',
+      monitoring: 'Monthly review of communication quality via stakeholder feedback surveys. Track escalation rates as proxy for communication effectiveness. Quarterly prompt tuning based on PM feedback.'
+    }
+  ];
+
+  // Show company profile summary and go to page 2
+  document.getElementById('company-summary').innerHTML =
+    '<div style="background:#0A1628;border-radius:10px;padding:10px 14px;margin-bottom:1rem;border:1px solid #1E3347;font-size:12px;color:#9EB3C8;display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+    '<span style="font-size:11px;font-weight:600;color:#4B9EF4;text-transform:uppercase;letter-spacing:0.06em;flex-shrink:0">Company profile</span>' +
+    '<span>🏢 Technology / SaaS</span><span>🌍 US only</span><span>📊 Mid-market (201-1000)</span>' +
+    '<button onclick="showPage(1);updateProgress(1)" style="margin-left:auto;font-size:11px;color:#4B9EF4;background:none;border:none;cursor:pointer;text-decoration:underline">Edit</button>' +
+    '</div>';
+
+  updateCounter();
+  showPage(2);
+  updateProgress(2);
+  document.getElementById('p2-err-msg').innerHTML = '<div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22C55E;border-radius:8px;padding:10px 12px;font-size:13px;margin-top:8px">⚡ Test data loaded — 3 use cases ready. Click Review & run portfolio evaluation to test.</div>';
+}
+
+function startOver() {
+  evaluations = [];
+  pendingInputs = [];
+  companyProfile = '';
+  clearForm();
+  showPage(1);
+  updateProgress(1);
+  document.getElementById('uc-count').textContent = '0';
+  document.getElementById('uc-tags').innerHTML = '<span class="uc-tag current">→ Entering #1</span>';
+}
+
+function sc(score, max) {
+  var p = score/max;
+  return p >= 0.7 ? 'score-green' : p >= 0.4 ? 'score-amber' : 'score-red';
+}
+function bcl(score, max) {
+  var p = score/max;
+  return p >= 0.7 ? '#22C55E' : p >= 0.4 ? '#F59E0B' : '#EF4444';
+}
+function recClass(r) { return r==='Proceed'?'chip-green':r==='Proceed with Conditions'?'chip-amber':'chip-red'; }
+function recEmoji(r) { return r==='Proceed'?'✅':r==='Proceed with Conditions'?'⚠️':'🚫'; }
+function riskClass(r) { return r==='Low'?'chip-green':r==='Medium'?'chip-amber':r==='Critical'?'chip-red':'chip-red'; }
+function burdenClass(b) { return b==='Low'?'chip-green':b==='Medium'?'chip-amber':'chip-red'; }
+function pillClass(p) { return p==='Must Have'?'chip-red':p==='Should Have'?'chip-amber':p==='Monitor'?'chip-blue':'chip-green'; }
+function esClass(es) { return es&&es.includes('Full')?'chip-blue':es&&es.includes('Aug')?'chip-green':'chip-amber'; }
+
+function miniScore(label, score, max) {
+  if (!score && score !== 0) return '';
+  var pct = (score/max)*100;
+  var color = bcl(score,max);
+  var cl = sc(score,max);
+  return '<div class="mini-card"><div class="mini-label">' + label + '</div><div class="score-mini"><span class="score-mini-val ' + cl + '">' + score + '</span><span style="font-size:10px;color:#4A6070">/' + max + '</span><div class="bar-bg"><div class="bar-fill" style="width:' + pct + '%;background:' + color + '"></div></div></div></div>';
+}
+
+function inputRow(label, val) {
+  if (!val) return '';
+  return '<div style="margin-bottom:8px"><div style="font-size:11px;color:#6B8099;margin-bottom:3px">' + label + '</div><div class="di">' + val + '</div></div>';
+}
+
+function renderDetailInner(e) {
+  var c1 = e.category1_risk_feasibility || {};
+  var c2 = e.category2_value_roi || {};
+  var c3 = e.category3_implementation || {};
+  var tf = c1.technical_feasibility || {};
+  var dr = c3.data_readiness || {};
+  var cm = c3.change_management || {};
+  var mon = c3.monitoring_assessment || {};
+  var ava = c2.automation_vs_augmentation || {};
+  var ts = c2.time_savings || {};
+  var qe = c2.quality_error_reduction || {};
+  var inp = e._inputs || {};
+
+  var warnings = (c1.compliance_warnings||[]).map(function(w) {
+    return '<div class="warn-box"><div style="display:flex;gap:6px;align-items:center;margin-bottom:3px"><span style="font-size:12px;font-weight:500;color:#E8EDF2">' + w.flag + '</span><span class="chip chip-amber" style="font-size:10px">' + w.category + '</span></div><div class="di">' + w.detail + '</div></div>';
+  }).join('') || '<span style="font-size:12px;color:#4A6070">No specific warnings flagged.</span>';
+
+  var regs = (c1.regulatory_requirements||[]).map(function(r) {
+    return '<div class="reg-box"><div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:3px"><span style="font-size:12px;font-weight:600;color:#E8EDF2">' + r.regulation + '</span><span class="chip chip-blue" style="font-size:10px">' + r.jurisdiction + '</span></div><div style="font-size:10px;color:#F59E0B;margin-bottom:3px">⚡ ' + r.triggered_by + '</div><div class="di">' + r.requirement + '</div><span class="chip ' + pillClass(r.priority) + '" style="margin-top:5px;display:inline-block">' + r.priority + '</span></div>';
+  }).join('') || '<span style="font-size:12px;color:#4A6070">No regulatory frameworks triggered.</span>';
+
+  var acts = (c3.top_actions||[]).map(function(a,j) {
+    return '<div class="act-item"><div class="act-num">' + (j+1) + '</div><div class="di">' + a.action + ' <span class="chip ' + pillClass(a.priority) + '" style="margin-left:4px">' + a.priority + '</span></div></div>';
+  }).join('');
+
+  var vrisks = (c2.value_risks||[]).map(function(v) {
+    return '<div class="dot-item"><div class="dot" style="background:#F59E0B"></div><div class="di">' + v + '</div></div>';
+  }).join('');
+
+  var acts_cm = (cm.key_activities||[]).map(function(a) {
+    return '<div class="dot-item"><div class="dot"></div><div class="di">' + a + '</div></div>';
+  }).join('');
+
+  var mgaps = (mon.gaps||[]).map(function(g) {
+    return '<div class="dot-item"><div class="dot" style="background:#F59E0B"></div><div class="di">' + g + '</div></div>';
+  }).join('');
+
+  return '<div class="detail-inner">' +
+
+    // USER INPUTS SECTION
+    '<div class="dl" style="color:#9EB3C8">YOUR INPUTS</div>' +
+    '<div class="inner-box" style="margin-bottom:12px">' +
+    inputRow('What do you want AI to do?', inp.useCase) +
+    inputRow('What business problem does this solve?', inp.problem) +
+    inputRow('Proposed business value', inp.value) +
+    inputRow('What data will the AI use?', inp.data) +
+    inputRow('Data quality', inp.dataQuality) +
+    inputRow('User population for this use case', inp.users) +
+    inputRow('Technical infrastructure readiness for this use case', inp.tech) +
+    inputRow('Who makes the final decision?', inp.decision) +
+    inputRow('What happens if AI gets it wrong?', inp.errorImpact) +
+    inputRow('Known risks, ethical concerns or sensitivities', inp.ethics) +
+    inputRow('Timeline & budget', inp.timeline) +
+    inputRow('Current alternatives — how is this solved today?', inp.alternatives) +
+    inputRow('Integration complexity', inp.integration) +
+    inputRow('Human-in-the-loop & success metrics', inp.humanLoop) +
+    inputRow('Monitoring plan post-launch', inp.monitoring) +
+    '</div>' +
+
+    // AI EVALUATION SECTION
+    '<div class="dl" style="color:#4B9EF4">AI EVALUATION</div>' +
+
+    // Input quality indicator
+    (e.input_quality ? (function() {
+      var iq = e.input_quality;
+      var iqColor = iq.overall==='High'?'#22C55E':iq.overall==='Medium'?'#F59E0B':'#EF4444';
+      var flags = (iq.flags||[]).map(function(f){return '<div class="dot-item"><div class="dot" style="background:#F59E0B"></div><div class="di" style="color:#F59E0B">' + f + '</div></div>';}).join('');
+      return '<div class="inner-box" style="margin-bottom:10px;border-left:3px solid ' + iqColor + '">' +
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:' + (flags?'6px':'0') + '">' +
+        '<div style="font-size:11px;font-weight:600;color:#6B8099;text-transform:uppercase;letter-spacing:0.06em">Input quality</div>' +
+        '<span style="font-size:11px;font-weight:600;color:' + iqColor + '">' + iq.overall + '</span>' +
+        '<span style="font-size:11px;color:#6B8099">· Score confidence: </span>' +
+        '<span style="font-size:11px;font-weight:600;color:' + (iq.score_confidence==='High'?'#22C55E':iq.score_confidence==='Medium'?'#F59E0B':'#EF4444') + '">' + (iq.score_confidence||'') + '</span>' +
+        '</div>' +
+        (flags ? '<div class="dot-list">' + flags + '</div>' : '') +
+        '</div>';
+    })() : '') +
+
+    '<div class="dt" style="margin-bottom:8px">' + (e.recommendation_summary||'') + '</div>' +
+    '<div class="dt" style="font-style:italic;margin-bottom:12px">' + (e.thought_process||'') + '</div>' +
+    '<div class="grid3">' + miniScore('Technical feasibility', tf.score, 5) + miniScore('Data readiness', dr.score, 5) + miniScore('Monitoring', mon.score, 5) + '</div>' +
+
+    '<div class="dl" style="margin-top:16px">CATEGORY 1 — RISK & FEASIBILITY</div>' +
+    '<div class="inner-box" style="margin-bottom:6px"><div class="di">' + (c1.risk_score_rationale||'') + '</div></div>' +
+    '<div class="dl">Compliance warnings</div>' + warnings +
+    '<div class="dl">Regulatory requirements</div>' + regs +
+    '<div class="inner-box" style="margin-top:6px"><div class="di">' + (c1.compliance_burden_rationale||'') + '</div></div>' +
+
+    '<div class="dl" style="margin-top:16px">CATEGORY 2 — VALUE & ROI</div>' +
+    '<div class="inner-box" style="margin-bottom:6px"><div style="font-size:11px;color:#6B8099;margin-bottom:4px">Time savings <span style="color:' + (ts.confidence==='High'?'#22C55E':ts.confidence==='Medium'?'#F59E0B':'#EF4444') + '">' + (ts.confidence||'') + ' confidence</span></div><div class="di">' + (ts.assessment||'') + '</div></div>' +
+    '<div class="inner-box" style="margin-bottom:6px"><div style="font-size:11px;color:#6B8099;margin-bottom:4px">Quality & error reduction</div><div class="di">' + (qe.assessment||'') + '</div></div>' +
+    '<div class="inner-box" style="margin-bottom:6px"><div style="font-size:11px;color:#6B8099;margin-bottom:6px">End state</div><div style="display:flex;align-items:center;gap:8px"><span class="chip ' + esClass(ava.end_state) + '">' + (ava.end_state||'').split('(')[0].trim() + '</span><span class="di">' + (ava.rationale||'') + '</span></div></div>' +
+    (vrisks ? '<div class="inner-box" style="margin-bottom:6px"><div style="font-size:11px;color:#6B8099;margin-bottom:4px">Value risks</div><div class="dot-list">' + vrisks + '</div></div>' : '') +
+    '<div class="inner-box"><div class="di">' + (c2.business_value_assessment||'') + '</div></div>' +
+
+    '<div class="dl" style="margin-top:16px">CATEGORY 3 — IMPLEMENTATION</div>' +
+    '<div class="inner-box" style="margin-bottom:6px"><div style="font-size:11px;color:#6B8099;margin-bottom:4px">Data: ' + (dr.recommendation||'') + '</div><div class="di">' + (dr.assessment||'') + '</div>' + (dr.rag_or_finetune_rationale ? '<div class="di" style="margin-top:5px;color:#7A8FA0">' + dr.rag_or_finetune_rationale + '</div>' : '') + '</div>' +
+    '<div class="inner-box" style="margin-bottom:6px"><div style="font-size:11px;color:#6B8099;margin-bottom:4px">Change management: ' + (cm.complexity||'') + '</div><div class="di" style="margin-bottom:6px">' + (cm.assessment||'') + '</div><div class="dot-list">' + acts_cm + '</div></div>' +
+    (c3.implementation_timeline_assessment ? '<div class="inner-box" style="margin-bottom:6px"><div style="font-size:11px;color:#6B8099;margin-bottom:4px">Timeline assessment</div><div class="di">' + c3.implementation_timeline_assessment + '</div></div>' : '') +
+    (mgaps ? '<div class="inner-box" style="margin-bottom:6px"><div style="font-size:11px;color:#6B8099;margin-bottom:4px">Monitoring gaps</div><div class="dot-list">' + mgaps + '</div></div>' : '') +
+    '<div class="inner-box"><div style="font-size:11px;color:#6B8099;margin-bottom:8px">Top actions</div>' + acts + '</div>' +
+    '</div>';
+}
+
+function downloadReport() {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    alert('PDF library not loaded yet. Please wait a moment and try again.');
+    return;
+  }
+  if (evaluations.length === 0) {
+    alert('No evaluations to download yet.');
+    return;
+  }
+  try {
+  var ranked = evaluations.slice().sort(function(a,b) { return (b.composite_score||0) - (a.composite_score||0); });
+  var date = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+  var jsPDF = window.jspdf.jsPDF;
+  var doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  var W = 210; // A4 width
+  var margin = 14;
+  var contentW = W - margin * 2;
+  var y = margin;
+
+  // Color palette
+  var navy = [10, 22, 40];
+  var blue = [75, 158, 244];
+  var green = [34, 197, 94];
+  var amber = [245, 158, 11];
+  var red = [239, 68, 68];
+  var white = [255, 255, 255];
+  var lightGray = [245, 247, 250];
+  var midGray = [148, 163, 184];
+  var darkGray = [51, 65, 85];
+
+  function addPage() {
+    doc.addPage();
+    y = margin;
+    // Header bar on each page
+    doc.setFillColor.apply(doc, navy);
+    doc.rect(0, 0, W, 10, 'F');
+    doc.setTextColor.apply(doc, blue);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.text('AI USE CASE PORTFOLIO EVALUATOR', margin, 6.5);
+    doc.setTextColor.apply(doc, midGray);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Built by Chandana Suggala', W - margin, 6.5, { align: 'right' });
+    y = 18;
+  }
+
+  function checkY(needed) {
+    if (y + needed > 280) { addPage(); }
+  }
+
+  function sectionHeader(title, color) {
+    checkY(10);
+    color = color || navy;
+    doc.setFillColor.apply(doc, color);
+    doc.rect(margin, y, contentW, 7, 'F');
+    doc.setTextColor.apply(doc, white);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text(title, margin + 3, y + 4.8);
+    y += 10;
+  }
+
+  function label(txt, val, indent) {
+    if (!val) return;
+    indent = indent || 0;
+    checkY(12);
+    doc.setTextColor.apply(doc, midGray);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.text(txt.toUpperCase(), margin + indent, y);
+    doc.setTextColor.apply(doc, darkGray);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    var lines = doc.splitTextToSize(String(val), contentW - indent - 2);
+    lines.forEach(function(line) {
+      checkY(5);
+      doc.text(line, margin + indent, y + 4);
+      y += 4.5;
+    });
+    y += 2;
+  }
+
+  function recBadge(rec, x, bY) {
+    var color = rec === 'Proceed' ? green : rec === 'Proceed with Conditions' ? amber : red;
+    doc.setFillColor.apply(doc, color);
+    doc.roundedRect(x, bY - 4, 52, 6, 1.5, 1.5, 'F');
+    doc.setTextColor.apply(doc, white);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    var label2 = rec === 'Proceed with Conditions' ? 'With Conditions' : rec;
+    doc.text(label2, x + 26, bY, { align: 'center' });
+  }
+
+  function scoreBar(score, max, bX, bY, barW) {
+    barW = barW || 30;
+    var pct = (score / max);
+    var color = pct >= 0.7 ? green : pct >= 0.4 ? amber : red;
+    doc.setFillColor(220, 226, 234);
+    doc.roundedRect(bX, bY - 2.5, barW, 3, 1, 1, 'F');
+    doc.setFillColor.apply(doc, color);
+    doc.roundedRect(bX, bY - 2.5, barW * pct, 3, 1, 1, 'F');
+    doc.setTextColor.apply(doc, color);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text(score + '/' + max, bX + barW + 2, bY);
+  }
+
+  function chipText(txt, color, x, cY) {
+    doc.setTextColor.apply(doc, color);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text(txt, x, cY);
+  }
+
+  // ===== COVER PAGE =====
+  doc.setFillColor.apply(doc, navy);
+  doc.rect(0, 0, W, 297, 'F');
+
+  // Title block
+  doc.setFillColor.apply(doc, blue);
+  doc.rect(0, 60, W, 2, 'F');
+  doc.setTextColor.apply(doc, white);
+  doc.setFontSize(26);
+  doc.setFont('helvetica', 'bold');
+  doc.text('AI USE CASE', margin, 85);
+  doc.text('PORTFOLIO EVALUATOR', margin, 98);
+  doc.setFillColor.apply(doc, blue);
+  doc.rect(0, 103, W, 2, 'F');
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor.apply(doc, midGray);
+  doc.text('PORTFOLIO EVALUATION REPORT', margin, 113);
+  doc.setFontSize(10);
+  doc.text(date, margin, 122);
+  doc.setFontSize(9);
+  doc.text('Built by Chandana Suggala', margin, 131);
+
+  // Summary stats box
+  doc.setFillColor(16, 32, 54);
+  doc.roundedRect(margin, 150, contentW, 50, 3, 3, 'F');
+
+  var proceed = ranked.filter(function(e){return e.recommendation==='Proceed';}).length;
+  var conds = ranked.filter(function(e){return e.recommendation==='Proceed with Conditions';}).length;
+  var dnp = ranked.filter(function(e){return e.recommendation==='Do Not Proceed';}).length;
+  var avg = (ranked.reduce(function(s,e){return s+(e.overall_score||0);},0)/ranked.length).toFixed(1);
+
+  var stats = [
+    { label: 'EVALUATED', value: ranked.length, color: blue },
+    { label: 'PROCEED', value: proceed, color: green },
+    { label: 'WITH CONDITIONS', value: conds, color: amber },
+    { label: 'DO NOT PROCEED', value: dnp, color: red },
+    { label: 'AVG SCORE /5', value: avg, color: blue }
+  ];
+  var statW = contentW / stats.length;
+  stats.forEach(function(s, i) {
+    var sx = margin + i * statW + statW / 2;
+    doc.setTextColor.apply(doc, s.color);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text(String(s.value), sx, 175, { align: 'center' });
+    doc.setTextColor.apply(doc, midGray);
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(s.label, sx, 182, { align: 'center' });
+  });
+
+  // Company profile on cover
+  doc.setFillColor(16, 32, 54);
+  doc.roundedRect(margin, 210, contentW, 55, 3, 3, 'F');
+  doc.setTextColor.apply(doc, blue);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('COMPANY PROFILE', margin + 5, 220);
+  doc.setTextColor.apply(doc, midGray);
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'normal');
+  var profileLines = doc.splitTextToSize(companyProfile.replace(/\n/g, '  |  '), contentW - 10);
+  profileLines.slice(0, 6).forEach(function(line, i) {
+    doc.text(line, margin + 5, 227 + i * 5);
+  });
+
+  // ===== PAGE 2: PORTFOLIO SUMMARY TABLE =====
+  addPage();
+
+  doc.setTextColor.apply(doc, navy);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Portfolio Rankings', margin, y);
+  doc.setTextColor.apply(doc, midGray);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Ranked by composite score (value minus risk) — highest priority first', margin, y + 5);
+  y += 12;
+
+  // Summary table
+  var tableHead = [['Rank', 'Use Case', 'Recommendation', 'Overall', 'Composite', 'Risk', 'ROI', 'Compliance', 'Input Quality']];
+  var tableBody = ranked.map(function(e, i) {
+    var c1 = e.category1_risk_feasibility || {};
+    var c2 = e.category2_value_roi || {};
+    var iq = e.input_quality || {};
+    var rec = e.recommendation === 'Proceed with Conditions' ? 'With Conditions' : (e.recommendation || '—');
+    return [
+      '#' + (i + 1),
+      e.use_case_name || 'Use case ' + (i + 1),
+      rec,
+      (e.overall_score || '—') + '/5',
+      typeof e.composite_score === 'number' ? e.composite_score.toFixed(1) : '—',
+      c1.risk_score || '—',
+      (c2.roi_score || '—') + '/5',
+      c1.compliance_burden || '—',
+      (iq.overall || '—') + ' / ' + (iq.score_confidence || '—')
+    ];
+  });
+
+  doc.autoTable({
+    startY: y,
+    head: tableHead,
+    body: tableBody,
+    theme: 'grid',
+    headStyles: { fillColor: navy, textColor: white, fontSize: 7, fontStyle: 'bold' },
+    bodyStyles: { fontSize: 7, textColor: darkGray },
+    alternateRowStyles: { fillColor: lightGray },
+    columnStyles: {
+      0: { cellWidth: 9, halign: 'center' },
+      1: { cellWidth: 38 },
+      2: { cellWidth: 24, halign: 'center' },
+      3: { cellWidth: 14, halign: 'center' },
+      4: { cellWidth: 16, halign: 'center' },
+      5: { cellWidth: 13, halign: 'center' },
+      6: { cellWidth: 12, halign: 'center' },
+      7: { cellWidth: 16, halign: 'center' },
+      8: { cellWidth: 24, halign: 'center' }
+    },
+    didParseCell: function(data) {
+      if (data.section === 'body') {
+        var val = data.cell.raw;
+        if (val === 'Proceed') { data.cell.styles.textColor = green; data.cell.styles.fontStyle = 'bold'; }
+        else if (val === 'With Conditions') { data.cell.styles.textColor = amber; data.cell.styles.fontStyle = 'bold'; }
+        else if (val === 'Do Not Proceed') { data.cell.styles.textColor = red; data.cell.styles.fontStyle = 'bold'; }
+        else if (val === 'Low') { data.cell.styles.textColor = green; }
+        else if (val === 'Medium') { data.cell.styles.textColor = amber; }
+        else if (val === 'High' || val === 'Critical') { data.cell.styles.textColor = red; }
+        if (data.column.index === 8) {
+          if (val && val.startsWith('High')) data.cell.styles.textColor = green;
+          else if (val && val.startsWith('Medium')) data.cell.styles.textColor = amber;
+          else if (val && val.startsWith('Low')) data.cell.styles.textColor = red;
+        }
+      }
+    },
+    margin: { left: margin, right: margin }
+  });
+  y = doc.lastAutoTable.finalY + 10;
+
+  // ===== PAGES 3+: INDIVIDUAL USE CASE DETAIL =====
+  ranked.forEach(function(e, i) {
+    addPage();
+    var c1 = e.category1_risk_feasibility || {};
+    var c2 = e.category2_value_roi || {};
+    var c3 = e.category3_implementation || {};
+    var tf = c1.technical_feasibility || {};
+    var dr = c3.data_readiness || {};
+    var cm = c3.change_management || {};
+    var mon = c3.monitoring_assessment || {};
+    var ava = c2.automation_vs_augmentation || {};
+    var ts = c2.time_savings || {};
+    var qe = c2.quality_error_reduction || {};
+    var inp = e._inputs || {};
+
+    // Use case header
+    doc.setFillColor.apply(doc, navy);
+    doc.rect(0, y - 6, W, 18, 'F');
+    doc.setTextColor.apply(doc, midGray);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.text('RANK #' + (i + 1), margin, y);
+    doc.setTextColor.apply(doc, white);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text(e.use_case_name || 'Use case ' + (i + 1), margin, y + 6);
+    recBadge(e.recommendation, W - margin - 55, y + 5);
+    y += 18;
+
+    // Score row
+    doc.setFillColor(16, 32, 54);
+    doc.rect(margin, y, contentW, 14, 'F');
+    var scoreItems = [
+      { label: 'OVERALL', value: (e.overall_score || '—') + '/5', color: e.overall_score >= 3.5 ? green : e.overall_score >= 2 ? amber : red },
+      { label: 'COMPOSITE', value: typeof e.composite_score === 'number' ? e.composite_score.toFixed(1) : '—', color: e.composite_score >= 2 ? green : e.composite_score >= 0 ? amber : red },
+      { label: 'RISK', value: c1.risk_score || '—', color: c1.risk_score === 'Low' ? green : c1.risk_score === 'Medium' ? amber : red },
+      { label: 'ROI', value: (c2.roi_score || '—') + '/5', color: c2.roi_score >= 3.5 ? green : c2.roi_score >= 2.5 ? amber : red },
+      { label: 'COMPLIANCE', value: c1.compliance_burden || '—', color: c1.compliance_burden === 'Low' ? green : c1.compliance_burden === 'Medium' ? amber : red },
+      { label: 'INPUT QUALITY', value: (iq.overall||'—'), color: iq.overall==='High'?green:iq.overall==='Medium'?amber:red }
+    ];
+    var siW = contentW / scoreItems.length;
+    scoreItems.forEach(function(si, idx) {
+      var sx = margin + idx * siW + siW / 2;
+      doc.setTextColor.apply(doc, midGray);
+      doc.setFontSize(6);
+      doc.setFont('helvetica', 'normal');
+      doc.text(si.label, sx, y + 4, { align: 'center' });
+      doc.setTextColor.apply(doc, si.color);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text(String(si.value), sx, y + 11, { align: 'center' });
+    });
+    y += 18;
+
+    var iq = e.input_quality || {};
+
+    // Recommendation summary
+    sectionHeader('RECOMMENDATION & RATIONALE', navy);
+    label('Summary', e.recommendation_summary);
+    label('Thought process', e.thought_process);
+
+    // Input quality
+    if (iq.overall) {
+      checkY(12);
+      var iqColor2 = iq.overall==='High'?green:iq.overall==='Medium'?amber:red;
+      doc.setFillColor(16,32,54);
+      doc.roundedRect(margin, y, contentW, 10, 2, 2, 'F');
+      doc.setTextColor.apply(doc, midGray);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'bold');
+      doc.text('INPUT QUALITY:', margin + 4, y + 6.5);
+      doc.setTextColor.apply(doc, iqColor2);
+      doc.text(iq.overall, margin + 28, y + 6.5);
+      doc.setTextColor.apply(doc, midGray);
+      doc.text('  SCORE CONFIDENCE:', margin + 45, y + 6.5);
+      doc.setTextColor.apply(doc, iq.score_confidence==='High'?green:iq.score_confidence==='Medium'?amber:red);
+      doc.text(iq.score_confidence || '—', margin + 92, y + 6.5);
+      if ((iq.flags||[]).length) {
+        doc.setTextColor.apply(doc, amber);
+        doc.setFont('helvetica', 'normal');
+        doc.text('⚠ ' + (iq.flags||[]).join(' | '), margin + 4, y + 11);
+        y += 14;
+      } else {
+        y += 14;
+      }
+    }
+
+    // User inputs
+    sectionHeader('YOUR INPUTS', [30, 60, 100]);
+    label('What do you want AI to do?', inp.useCase);
+    label('What business problem does this solve?', inp.problem);
+    label('Proposed business value', inp.value);
+    if (inp.data) label('What data will the AI use?', inp.data);
+    if (inp.dataQuality) label('Data quality', inp.dataQuality);
+    if (inp.users) label('User population for this use case', inp.users);
+    if (inp.tech) label('Technical infrastructure readiness for this use case', inp.tech);
+    if (inp.decision) label('Who makes the final decision?', inp.decision);
+    if (inp.errorImpact) label('What happens if AI gets it wrong?', inp.errorImpact);
+    if (inp.ethics) label('Known risks, ethical concerns or sensitivities', inp.ethics);
+    if (inp.timeline) label('Timeline & budget', inp.timeline);
+    if (inp.alternatives) label('Current alternatives — how is this solved today?', inp.alternatives);
+    if (inp.integration) label('Integration complexity', inp.integration);
+    if (inp.humanLoop) label('Human-in-the-loop & success metrics', inp.humanLoop);
+    if (inp.monitoring) label('Monitoring plan post-launch', inp.monitoring);
+
+    // Category 1
+    sectionHeader('CATEGORY 1 — RISK & FEASIBILITY', [80, 20, 20]);
+    label('Risk assessment', c1.risk_score_rationale);
+    label('Model type required', tf.model_type_required);
+    label('Technical complexity', tf.complexity_rationale);
+
+    // Compliance warnings table
+    if ((c1.compliance_warnings || []).length) {
+      checkY(20);
+      doc.autoTable({
+        startY: y,
+        head: [['Compliance Warning', 'Category', 'Detail']],
+        body: (c1.compliance_warnings || []).map(function(w) { return [w.flag, w.category, w.detail]; }),
+        theme: 'grid',
+        headStyles: { fillColor: [120, 80, 10], textColor: white, fontSize: 7, fontStyle: 'bold' },
+        bodyStyles: { fontSize: 7, textColor: darkGray },
+        columnStyles: { 0: { cellWidth: 35 }, 1: { cellWidth: 28 }, 2: { cellWidth: contentW - 63 } },
+        margin: { left: margin, right: margin }
+      });
+      y = doc.lastAutoTable.finalY + 6;
+    }
+
+    // Regulatory requirements table
+    if ((c1.regulatory_requirements || []).length) {
+      checkY(20);
+      doc.setTextColor.apply(doc, midGray);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'bold');
+      doc.text('REGULATORY REQUIREMENTS', margin, y);
+      y += 4;
+      doc.autoTable({
+        startY: y,
+        head: [['Regulation', 'Jurisdiction', 'Triggered By', 'Requirement', 'Priority']],
+        body: (c1.regulatory_requirements || []).map(function(r) {
+          return [r.regulation || '', r.jurisdiction || '', r.triggered_by || '', r.requirement || '', r.priority || ''];
+        }),
+        theme: 'grid',
+        headStyles: { fillColor: navy, textColor: white, fontSize: 7, fontStyle: 'bold' },
+        bodyStyles: { fontSize: 6.5, textColor: darkGray },
+        alternateRowStyles: { fillColor: lightGray },
+        columnStyles: {
+          0: { cellWidth: 28 },
+          1: { cellWidth: 22 },
+          2: { cellWidth: 28 },
+          3: { cellWidth: contentW - 100 },
+          4: { cellWidth: 22, halign: 'center' }
+        },
+        didParseCell: function(data) {
+          if (data.section === 'body' && data.column.index === 4) {
+            var v = data.cell.raw;
+            if (v === 'Must Have') data.cell.styles.textColor = red;
+            else if (v === 'Should Have') data.cell.styles.textColor = amber;
+            else data.cell.styles.textColor = blue;
+            data.cell.styles.fontStyle = 'bold';
+          }
+        },
+        margin: { left: margin, right: margin }
+      });
+      y = doc.lastAutoTable.finalY + 8;
+    }
+
+    // Category 2
+    sectionHeader('CATEGORY 2 — VALUE & ROI', [20, 80, 30]);
+    label('Business value assessment', c2.business_value_assessment);
+    label('Time savings', ts.assessment);
+    label('Quality & error reduction', qe.assessment);
+    if (ava.end_state) label('End state', ava.end_state + ' — ' + (ava.rationale || ''));
+    if ((c2.value_risks || []).length) label('Value risks', (c2.value_risks || []).join(' | '));
+
+    // Dimension scores table
+    checkY(30);
+    var dimData = [
+      ['Technical Feasibility', (tf.score || '—') + '/5', tf.complexity_rationale || ''],
+      ['Data Readiness', (dr.score || '—') + '/5', dr.assessment || ''],
+      ['Change Management', cm.complexity || '—', cm.assessment || ''],
+      ['Monitoring Readiness', (mon.score || '—') + '/5', mon.assessment || '']
+    ];
+    doc.autoTable({
+      startY: y,
+      head: [['Dimension', 'Score', 'Assessment']],
+      body: dimData,
+      theme: 'grid',
+      headStyles: { fillColor: navy, textColor: white, fontSize: 7, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 7, textColor: darkGray },
+      alternateRowStyles: { fillColor: lightGray },
+      columnStyles: { 0: { cellWidth: 38 }, 1: { cellWidth: 18, halign: 'center' }, 2: { cellWidth: contentW - 56 } },
+      margin: { left: margin, right: margin }
+    });
+    y = doc.lastAutoTable.finalY + 8;
+
+    // Category 3
+    sectionHeader('CATEGORY 3 — IMPLEMENTATION', [20, 40, 80]);
+    label('Data readiness', (dr.recommendation || '') + (dr.rag_or_finetune_rationale ? ' — ' + dr.rag_or_finetune_rationale : ''));
+    label('Timeline assessment', c3.implementation_timeline_assessment);
+    if ((cm.key_activities || []).length) label('Change management activities', (cm.key_activities || []).join(' | '));
+    if ((mon.gaps || []).length) label('Monitoring gaps', (mon.gaps || []).join(' | '));
+
+    // Top actions table
+    if ((c3.top_actions || []).length) {
+      checkY(20);
+      doc.autoTable({
+        startY: y,
+        head: [['#', 'Action', 'Priority']],
+        body: (c3.top_actions || []).map(function(a, j) { return [j + 1, a.action, a.priority]; }),
+        theme: 'grid',
+        headStyles: { fillColor: navy, textColor: white, fontSize: 7, fontStyle: 'bold' },
+        bodyStyles: { fontSize: 7, textColor: darkGray },
+        columnStyles: { 0: { cellWidth: 8, halign: 'center' }, 1: { cellWidth: contentW - 38 }, 2: { cellWidth: 30, halign: 'center' } },
+        didParseCell: function(data) {
+          if (data.section === 'body' && data.column.index === 2) {
+            var v = data.cell.raw;
+            if (v === 'Must Have') data.cell.styles.textColor = red;
+            else if (v === 'Should Have') data.cell.styles.textColor = amber;
+            else data.cell.styles.textColor = green;
+            data.cell.styles.fontStyle = 'bold';
+          }
+        },
+        margin: { left: margin, right: margin }
+      });
+      y = doc.lastAutoTable.finalY + 6;
+    }
+  });
+
+  // Save
+  // ===== APPENDIX: METHODOLOGY =====
+  addPage();
+  doc.setFillColor.apply(doc, navy);
+  doc.rect(0, y-6, W, 18, 'F');
+  doc.setTextColor.apply(doc, white);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Appendix: Scoring Methodology', margin, y + 6);
+  y += 20;
+
+  sectionHeader('HOW SCORES ARE CALCULATED', navy);
+  doc.setTextColor.apply(doc, darkGray);
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'normal');
+  var methodText = 'All scores are AI-generated estimates based on user-provided inputs using a structured governance rubric. They are intended to support prioritization decisions, not replace financial due diligence. Organizations should validate ROI projections before committing to development.';
+  var methodLines = doc.splitTextToSize(methodText, contentW);
+  methodLines.forEach(function(line) { doc.text(line, margin, y); y += 4.5; });
+  y += 4;
+
+  doc.autoTable({
+    startY: y,
+    head: [['Metric', 'Weight', 'How It Is Derived']],
+    body: [
+      ['Technical Feasibility', '15%', 'Estimated from model type required, integration complexity, and infrastructure readiness'],
+      ['ROI Score', '20%', 'Derived from specificity of business value, time savings quantification, and comparison to current alternatives'],
+      ['Risk Score', '20%', 'Assessed from error impact severity, decision autonomy level, user population vulnerability, and harm types'],
+      ['Data Readiness', '20%', 'Evaluated from data quality input, availability, labeling status, and fitness for AI'],
+      ['Monitoring Readiness', '10%', 'Based on specificity of post-launch monitoring plan, drift detection, and retraining triggers'],
+      ['Compliance Burden', '15%', 'Determined by industry, geography, decision type, and user population against applicable regulatory frameworks'],
+      ['Composite Score', 'Primary', 'ROI Score minus (Risk Numeric × 0.6) — primary ranking metric balancing value against risk']
+    ],
+    theme: 'grid',
+    headStyles: { fillColor: navy, textColor: white, fontSize: 7, fontStyle: 'bold' },
+    bodyStyles: { fontSize: 7, textColor: darkGray },
+    alternateRowStyles: { fillColor: lightGray },
+    columnStyles: { 0: { cellWidth: 35 }, 1: { cellWidth: 18, halign: 'center' }, 2: { cellWidth: contentW - 53 } },
+    margin: { left: margin, right: margin }
+  });
+  y = doc.lastAutoTable.finalY + 8;
+
+  sectionHeader('INPUT QUALITY & SCORE CONFIDENCE', [30, 60, 100]);
+  doc.autoTable({
+    startY: y,
+    head: [['Rating', 'Meaning', 'Impact on Scores']],
+    body: [
+      ['High', 'Business value quantified, data described, monitoring planned', 'Scores are reliable — use with confidence'],
+      ['Medium', 'Some inputs vague or missing — e.g. value not quantified', 'Scores are directionally correct but treat with moderate caution'],
+      ['Low', 'Multiple vague inputs — limited specificity provided', 'Scores are estimates only — gather better inputs before deciding']
+    ],
+    theme: 'grid',
+    headStyles: { fillColor: [30, 60, 100], textColor: white, fontSize: 7, fontStyle: 'bold' },
+    bodyStyles: { fontSize: 7, textColor: darkGray },
+    alternateRowStyles: { fillColor: lightGray },
+    columnStyles: { 0: { cellWidth: 18, halign: 'center' }, 1: { cellWidth: 60 }, 2: { cellWidth: contentW - 78 } },
+    didParseCell: function(data) {
+      if (data.section === 'body' && data.column.index === 0) {
+        if (data.cell.raw === 'High') data.cell.styles.textColor = green;
+        else if (data.cell.raw === 'Medium') data.cell.styles.textColor = amber;
+        else data.cell.styles.textColor = red;
+        data.cell.styles.fontStyle = 'bold';
+      }
+    },
+    margin: { left: margin, right: margin }
+  });
+  y = doc.lastAutoTable.finalY + 8;
+
+  sectionHeader('REGULATORY FRAMEWORK COVERAGE', [20, 80, 30]);
+  doc.setTextColor.apply(doc, darkGray);
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'normal');
+  var regText = 'Regulatory requirements are determined dynamically based on your industry, geography, decision type, and user population. The following frameworks are covered: EU AI Act, US State AI Laws (California CCPA Automated Decision-Making, AB 2013/SB 942, Colorado AI Act SB 189, Illinois BIPA), GDPR, CCPA/CPRA, HIPAA, FDA Mobile Medical App Guidance, PCI DSS 4.0, SEC Rules, FCRA, ECOA, SOC 2 Type II, NIST AI RMF, EEOC Guidelines, NYC Local Law 144, FERPA, COPPA, NERC CIP, ITAR, CMMC, FedRAMP, ABA Model Rules, Fair Housing Act, and more.';
+  var regLines = doc.splitTextToSize(regText, contentW);
+  regLines.forEach(function(line) { checkY(5); doc.text(line, margin, y); y += 4.5; });
+  y += 6;
+
+  doc.setFillColor(16,32,54);
+  doc.roundedRect(margin, y, contentW, 14, 2, 2, 'F');
+  doc.setTextColor.apply(doc, midGray);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'italic');
+  var disclaimer = 'DISCLAIMER: This report is generated by AI and is intended for decision-support purposes only. Scores and regulatory assessments are estimates based on user-provided inputs and should not be used as a substitute for legal advice, financial due diligence, or formal risk assessment. Consult qualified legal and technical professionals before making AI investment decisions.';
+  var discLines = doc.splitTextToSize(disclaimer, contentW - 8);
+  discLines.forEach(function(line, idx) { doc.text(line, margin + 4, y + 5 + idx * 4); });
+  y += 18;
+
+  doc.save('AI-Use-Case-Portfolio-Evaluation-' + new Date().toISOString().split('T')[0] + '.pdf');
+  } catch(err) {
+    alert('PDF generation failed: ' + err.message + '. Please try again.');
+    console.error('PDF error:', err);
+  }
+}
+
+function renderResults() {
+  var ranked = evaluations.slice().sort(function(a,b) { return (b.composite_score||0) - (a.composite_score||0); });
+  var proceed = ranked.filter(function(e){return e.recommendation==='Proceed';}).length;
+  var conds = ranked.filter(function(e){return e.recommendation==='Proceed with Conditions';}).length;
+  var dnp = ranked.filter(function(e){return e.recommendation==='Do Not Proceed';}).length;
+  var avg = (ranked.reduce(function(s,e){return s+(e.overall_score||0);},0)/ranked.length).toFixed(1);
+
+  var rows = ranked.map(function(e,i) {
+    var c1 = e.category1_risk_feasibility||{};
+    var c2 = e.category2_value_roi||{};
+    var rankCl = i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'';
+    var compColor = e.composite_score>=2?'score-green':e.composite_score>=0?'score-amber':'score-red';
+    return '<tr class="uc-row" onclick="toggleRow(' + i + ')">' +
+      '<td class="c"><div class="rank-circle ' + rankCl + '">' + (i+1) + '</div></td>' +
+      '<td><div class="uc-name">' + (e.use_case_name||'Use case '+(i+1)) + '</div><div class="uc-sub">' + ((c2.automation_vs_augmentation||{}).end_state||'').split('(')[0].trim() + '</div></td>' +
+      '<td class="c"><span class="chip ' + recClass(e.recommendation) + '">' + recEmoji(e.recommendation) + ' ' + (e.recommendation==='Proceed with Conditions'?'With Conditions':e.recommendation) + '</span></td>' +
+      '<td class="c"><span class="' + sc(e.overall_score,5) + '">' + (e.overall_score||'—') + '</span><span style="color:#4A6070;font-size:11px"> /5</span></td>' +
+      '<td class="c"><span class="' + compColor + '">' + (typeof e.composite_score==='number'?e.composite_score.toFixed(1):'—') + '</span></td>' +
+      '<td class="c"><span class="chip ' + riskClass(c1.risk_score) + '">' + (c1.risk_score||'—') + '</span></td>' +
+      '<td class="c"><span class="' + sc(c2.roi_score||0,5) + '">' + (c2.roi_score||'—') + '</span><span style="color:#4A6070;font-size:11px"> /5</span></td>' +
+      '<td class="c"><span class="chip ' + burdenClass(c1.compliance_burden) + '">' + (c1.compliance_burden||'—') + '</span></td>' +
+      '<td class="c" style="white-space:nowrap">' +
+      '<button class="expand-btn" onclick="event.stopPropagation();toggleRow(' + i + ')" style="margin-right:4px">Details ▼</button>' +
+      '<button class="expand-btn" onclick="event.stopPropagation();editUseCase(' + evaluations.indexOf(e) + ')" style="background:rgba(245,158,11,0.1);color:#F59E0B;border-color:rgba(245,158,11,0.3)">✏️ Edit</button>' +
+      '</td>' +
+      '</tr>' +
+      '<tr id="detail-row-' + i + '" class="detail-row hidden"><td colspan="9">' + renderDetailInner(e) + '</td></tr>';
+  }).join('');
+
+  document.getElementById('results').innerHTML =
+    '<div class="results-header">' +
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px">' +
+    '<div><h2>AI Use Case Evaluation Results</h2><p style="margin-top:4px">Ranked by composite score (value minus risk) — highest priority first. Click any row to expand inputs and full evaluation.</p></div>' +
+    '<button class="btn btn-secondary" onclick="downloadReport()" style="flex-shrink:0;white-space:nowrap">⬇ Download report</button>' +
+    '</div>' +
+    '<div class="summary-stats">' +
+    '<div class="stat-box"><span class="stat-num" style="color:#4B9EF4">' + ranked.length + '</span><span class="stat-label">Evaluated</span></div>' +
+    '<div class="stat-box"><span class="stat-num" style="color:#22C55E">' + proceed + '</span><span class="stat-label">Proceed</span></div>' +
+    '<div class="stat-box"><span class="stat-num" style="color:#F59E0B">' + conds + '</span><span class="stat-label">With conditions</span></div>' +
+    '<div class="stat-box"><span class="stat-num" style="color:#EF4444">' + dnp + '</span><span class="stat-label">Do not proceed</span></div>' +
+    '<div class="stat-box"><span class="stat-num" style="color:#4B9EF4">' + avg + '</span><span class="stat-label">Avg score /5</span></div>' +
+    '</div></div>' +
+    '<div class="table-wrap"><table>' +
+    '<thead><tr>' +
+    '<th class="c">Rank</th><th>Use case</th><th class="c">Recommendation</th>' +
+    '<th class="c">Overall /5</th><th class="c">Composite ▼</th>' +
+    '<th class="c">Risk</th><th class="c">ROI /5</th><th class="c">Compliance</th><th class="c">Actions</th>' +
+    '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+}
+
+function toggleRow(i) {
+  var row = document.getElementById('detail-row-' + i);
+  if (row) row.classList.toggle('hidden');
+}
+
+// Wire up Review button to enable when use case field has content
+document.addEventListener('DOMContentLoaded', function() {
+  var ucField = document.getElementById('p2-uc');
+  if (ucField) {
+    ucField.addEventListener('input', checkReviewBtn);
+    ucField.addEventListener('change', checkReviewBtn);
+  }
+});
+</script>
+</body>
+</html>
