@@ -161,6 +161,7 @@ Scoring:
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 2500,
+        temperature: 0,
         system: systemPrompt,
         messages: [{ role: 'user', content: `Evaluate this AI use case:\n\nCompany Profile:\n${companyProfile}\n\nUse Case:\n${useCase}` }]
       })
