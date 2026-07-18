@@ -4,7 +4,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { companyProfile, useCase } = req.body;
+    const { companyProfile, useCase, weights } = req.body;
+
+    // Default weights if not provided
+    const w = weights || { value: 30, risk: 25, tech: 20, change: 15, cost: 10 };
 
     // Extract industry and geography from company profile to build targeted prompt
     const profileLower = (companyProfile || '').toLowerCase();
@@ -136,7 +139,7 @@ Return ONLY valid JSON, no markdown, no backticks:
 
 Scoring:
 - overall_score: weighted decimal 0-5 (technical_feasibility 15% + roi_score 20% + risk_numeric inverted Critical=1,High=2,Medium=3,Low=4 scaled to 5 at 20% + data_readiness 20% + monitoring 10% + compliance_burden inverted High=1,Medium=3,Low=5 at 15%)
-- composite_score: roi_score minus (risk_numeric * 0.6) â€” primary ranking metric
+- composite_score: calculate using organization weights: (roi_score * ${w.value/100}) + ((5 - risk_numeric) * ${w.risk/100}) + (technical_feasibility.score * ${w.tech/100}) + (change_management_score * ${w.change/100}) + (cost_score * ${w.cost/100}) where change_management_score = Low=4,Medium=2.5,High=1 and cost_score = inverse of cost concern derived from timeline_budget input (if budget is large = lower cost score)
 - risk_numeric: Critical=1, High=2, Medium=3, Low=4
 - input_quality.overall: High = business value quantified + data described + monitoring planned; Medium = some gaps; Low = vague inputs with little specificity
 - input_quality.score_confidence: reflects how much the vagueness of inputs affects reliability of scores â€” High/Medium/Low
